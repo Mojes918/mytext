@@ -10,14 +10,14 @@ import { AntDesign, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 
 
 
-/*import {withAuthenticator} from 'aws-amplify-react-native';
+import {withAuthenticator} from "aws-amplify-react-native";
 
 
 import { Amplify } from 'aws-amplify';
-import config from '../aws-exports'
+import config from '../../src/aws-exports'
 
 Amplify.configure(config);
-*/
+
 
 
 
@@ -43,6 +43,7 @@ function TabBarIcon(props: {
         // Disable the static render of the header on web
         // to prevent a hydration error in React Navigation v6.
         headerShown: useClientOnlyValue(false, true),
+        
       }}>
       <Tabs.Screen
         name="index"
@@ -65,4 +66,4 @@ function TabBarIcon(props: {
   );
 }
 
-export default (TabLayout);
+export default withAuthenticator(TabLayout);
