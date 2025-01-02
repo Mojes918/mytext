@@ -1,0 +1,14 @@
+{
+  "resourceName": "s37a797c57",
+  "policyUUID": "7a797c57",
+  "bucketName": "mychat558b5f05d70b4224946be66aa15a0971",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}

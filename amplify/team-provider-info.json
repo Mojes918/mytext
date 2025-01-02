@@ -1,19 +1,32 @@
 {
   "staging": {
     "awscloudformation": {
-      "AuthRoleName": "amplify-textin-staging-90461-authRole",
-      "UnauthRoleArn": "arn:aws:iam::423623872285:role/amplify-textin-staging-90461-unauthRole",
-      "AuthRoleArn": "arn:aws:iam::423623872285:role/amplify-textin-staging-90461-authRole",
-      "Region": "eu-north-1",
-      "DeploymentBucketName": "amplify-textin-staging-90461-deployment",
-      "UnauthRoleName": "amplify-textin-staging-90461-unauthRole",
-      "StackName": "amplify-textin-staging-90461",
-      "StackId": "arn:aws:cloudformation:eu-north-1:423623872285:stack/amplify-textin-staging-90461/3cdf77f0-af99-11ef-9691-0e79d0e05a5f",
-      "AmplifyAppId": "d7cy8o3mfr2b5"
+      "AuthRoleName": "amplify-amplifyf8f556e21d274-staging-d57a5-authRole",
+      "UnauthRoleArn": "arn:aws:iam::423623872285:role/amplify-amplifyf8f556e21d274-staging-d57a5-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::423623872285:role/amplify-amplifyf8f556e21d274-staging-d57a5-authRole",
+      "Region": "ap-south-1",
+      "DeploymentBucketName": "amplify-amplifyf8f556e21d274-staging-d57a5-deployment",
+      "UnauthRoleName": "amplify-amplifyf8f556e21d274-staging-d57a5-unauthRole",
+      "StackName": "amplify-amplifyf8f556e21d274-staging-d57a5",
+      "StackId": "arn:aws:cloudformation:ap-south-1:423623872285:stack/amplify-amplifyf8f556e21d274-staging-d57a5/e0632c70-c1b2-11ef-9901-0a84008ae9d7",
+      "AmplifyAppId": "d35nx8z17pho34",
+      "AuthTriggerTemplateURL": "https://s3.amazonaws.com/amplify-amplifyf8f556e21d274-staging-d57a5-deployment/amplify-cfn-templates/auth/auth-trigger-cloudformation-template.json"
     },
     "categories": {
       "auth": {
-        "textin": {}
+        "myChat": {}
+      },
+      "function": {
+        "myChatPostConfirmation": {
+          "deploymentBucketName": "amplify-amplifyf8f556e21d274-staging-d57a5-deployment",
+          "s3Key": "amplify-builds/myChatPostConfirmation-4350343255736c4c362b-build.zip"
+        }
+      },
+      "api": {
+        "myChat": {}
+      },
+      "storage": {
+        "s37a797c57": {}
       }
     }
   }

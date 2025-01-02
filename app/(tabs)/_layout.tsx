@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Link, Tabs } from 'expo-router';
 import { Pressable } from 'react-native';
@@ -6,23 +6,19 @@ import { Pressable } from 'react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { AntDesign, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { AntDesign, FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 
 
+import {withAuthenticator}from "aws-amplify-react-native";
+import {Amplify, Auth} from 'aws-amplify';
+import awsconfig from '../../src/aws-exports'; // Adjust the path if necessary
 
-import {withAuthenticator} from "aws-amplify-react-native";
+try {
+  Amplify.configure(awsconfig);
 
-
-import { Amplify } from 'aws-amplify';
-import config from '../../src/aws-exports'
-
-Amplify.configure(config);
-
-
-
-
-
-
+} catch (error) {
+  console.error("Amplify configuration failed:", error);
+}
 
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
@@ -33,8 +29,25 @@ function TabBarIcon(props: {
   return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
 }
 
- function TabLayout() {
+
+function TabLayout() {
   const colorScheme = useColorScheme();
+
+
+  useEffect(()=>{
+    async function getAuthenticatedUser() {
+      try {
+          const user = await Auth.currentAuthenticatedUser();
+         // Contains details like email, sub, etc.
+      } catch (error) {
+          console.error('Error fetching authenticated user:', error);
+      }
+  }
+  getAuthenticatedUser();
+  },[])
+  
+  
+console.log("Hey Hello")
 
   return (
     <Tabs
@@ -50,20 +63,27 @@ function TabBarIcon(props: {
         options={{
           title:'Chats',
           headerShown:false,
-          tabBarIcon: ({ color }) =><AntDesign name="message1" size={24} color={color} />,
+          tabBarIcon: ({ color }) =><AntDesign name="message1" size={26} color={color} />,
          
         }}
       />
       <Tabs.Screen
         name="two"
         options={{
-          title: 'Social',
+          title: 'Stories',
           headerShown:false,
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="circle-multiple-outline" size={28} color={color} />,
+          tabBarIcon: ({ color }) => <MaterialIcons name="web-stories" size={26} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'profile',
+          headerShown:false,
+          tabBarIcon: ({ color }) => <FontAwesome5 name="user-circle" size={26} color={color} />,
+        }}
+        />
     </Tabs>
   );
 }
-
 export default withAuthenticator(TabLayout);

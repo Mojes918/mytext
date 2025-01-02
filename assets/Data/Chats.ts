@@ -27,7 +27,7 @@ messages:[
     content:'How are you,whats up?',
     createdAt:'6:32AM',
     user:{
-        id:'u2',
+        id:'u1',
         name:'Monica_Belluci',
     },
 },
@@ -54,7 +54,7 @@ messages:[
     content:'I am in Hyderabad,Working',
     createdAt:'6:36AM',
     user:{
-        id:'u1',
+        id:'u2',
         name:'Vikram',
     },
 },
