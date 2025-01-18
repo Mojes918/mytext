@@ -15,6 +15,8 @@ export const createMessage = /* GraphQL */ `
       chatroomID
       status
       replyToMessageId
+      scheduledTime
+      isScheduled
       createdAt
       updatedAt
       __typename
@@ -35,6 +37,8 @@ export const updateMessage = /* GraphQL */ `
       chatroomID
       status
       replyToMessageId
+      scheduledTime
+      isScheduled
       createdAt
       updatedAt
       __typename
@@ -55,6 +59,8 @@ export const deleteMessage = /* GraphQL */ `
       chatroomID
       status
       replyToMessageId
+      scheduledTime
+      isScheduled
       createdAt
       updatedAt
       __typename
@@ -78,6 +84,8 @@ export const createChatRoom = /* GraphQL */ `
         chatroomID
         status
         replyToMessageId
+        scheduledTime
+        isScheduled
         createdAt
         updatedAt
         __typename
@@ -114,6 +122,8 @@ export const updateChatRoom = /* GraphQL */ `
         chatroomID
         status
         replyToMessageId
+        scheduledTime
+        isScheduled
         createdAt
         updatedAt
         __typename
@@ -150,6 +160,8 @@ export const deleteChatRoom = /* GraphQL */ `
         chatroomID
         status
         replyToMessageId
+        scheduledTime
+        isScheduled
         createdAt
         updatedAt
         __typename
@@ -178,6 +190,7 @@ export const createUser = /* GraphQL */ `
       id
       name
       imageUri
+      backgroundImageUri
       status
       Messages {
         nextToken
@@ -190,6 +203,18 @@ export const createUser = /* GraphQL */ `
       lastOnlineAt
       phonenumber
       email
+      posts {
+        nextToken
+        __typename
+      }
+      followers {
+        nextToken
+        __typename
+      }
+      following {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -205,6 +230,7 @@ export const updateUser = /* GraphQL */ `
       id
       name
       imageUri
+      backgroundImageUri
       status
       Messages {
         nextToken
@@ -217,6 +243,18 @@ export const updateUser = /* GraphQL */ `
       lastOnlineAt
       phonenumber
       email
+      posts {
+        nextToken
+        __typename
+      }
+      followers {
+        nextToken
+        __typename
+      }
+      following {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -232,6 +270,7 @@ export const deleteUser = /* GraphQL */ `
       id
       name
       imageUri
+      backgroundImageUri
       status
       Messages {
         nextToken
@@ -244,6 +283,372 @@ export const deleteUser = /* GraphQL */ `
       lastOnlineAt
       phonenumber
       email
+      posts {
+        nextToken
+        __typename
+      }
+      followers {
+        nextToken
+        __typename
+      }
+      following {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createPost = /* GraphQL */ `
+  mutation CreatePost(
+    $input: CreatePostInput!
+    $condition: ModelPostConditionInput
+  ) {
+    createPost(input: $input, condition: $condition) {
+      id
+      userID
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      content
+      discription
+      media
+      type
+      likes {
+        nextToken
+        __typename
+      }
+      loves {
+        nextToken
+        __typename
+      }
+      comments {
+        nextToken
+        __typename
+      }
+      shares
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updatePost = /* GraphQL */ `
+  mutation UpdatePost(
+    $input: UpdatePostInput!
+    $condition: ModelPostConditionInput
+  ) {
+    updatePost(input: $input, condition: $condition) {
+      id
+      userID
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      content
+      discription
+      media
+      type
+      likes {
+        nextToken
+        __typename
+      }
+      loves {
+        nextToken
+        __typename
+      }
+      comments {
+        nextToken
+        __typename
+      }
+      shares
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deletePost = /* GraphQL */ `
+  mutation DeletePost(
+    $input: DeletePostInput!
+    $condition: ModelPostConditionInput
+  ) {
+    deletePost(input: $input, condition: $condition) {
+      id
+      userID
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      content
+      discription
+      media
+      type
+      likes {
+        nextToken
+        __typename
+      }
+      loves {
+        nextToken
+        __typename
+      }
+      comments {
+        nextToken
+        __typename
+      }
+      shares
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createLike = /* GraphQL */ `
+  mutation CreateLike(
+    $input: CreateLikeInput!
+    $condition: ModelLikeConditionInput
+  ) {
+    createLike(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateLike = /* GraphQL */ `
+  mutation UpdateLike(
+    $input: UpdateLikeInput!
+    $condition: ModelLikeConditionInput
+  ) {
+    updateLike(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteLike = /* GraphQL */ `
+  mutation DeleteLike(
+    $input: DeleteLikeInput!
+    $condition: ModelLikeConditionInput
+  ) {
+    deleteLike(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createLove = /* GraphQL */ `
+  mutation CreateLove(
+    $input: CreateLoveInput!
+    $condition: ModelLoveConditionInput
+  ) {
+    createLove(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateLove = /* GraphQL */ `
+  mutation UpdateLove(
+    $input: UpdateLoveInput!
+    $condition: ModelLoveConditionInput
+  ) {
+    updateLove(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteLove = /* GraphQL */ `
+  mutation DeleteLove(
+    $input: DeleteLoveInput!
+    $condition: ModelLoveConditionInput
+  ) {
+    deleteLove(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createComment = /* GraphQL */ `
+  mutation CreateComment(
+    $input: CreateCommentInput!
+    $condition: ModelCommentConditionInput
+  ) {
+    createComment(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      content
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateComment = /* GraphQL */ `
+  mutation UpdateComment(
+    $input: UpdateCommentInput!
+    $condition: ModelCommentConditionInput
+  ) {
+    updateComment(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      content
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteComment = /* GraphQL */ `
+  mutation DeleteComment(
+    $input: DeleteCommentInput!
+    $condition: ModelCommentConditionInput
+  ) {
+    deleteComment(input: $input, condition: $condition) {
+      id
+      postID
+      userID
+      content
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createFollow = /* GraphQL */ `
+  mutation CreateFollow(
+    $input: CreateFollowInput!
+    $condition: ModelFollowConditionInput
+  ) {
+    createFollow(input: $input, condition: $condition) {
+      id
+      followerID
+      followingID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateFollow = /* GraphQL */ `
+  mutation UpdateFollow(
+    $input: UpdateFollowInput!
+    $condition: ModelFollowConditionInput
+  ) {
+    updateFollow(input: $input, condition: $condition) {
+      id
+      followerID
+      followingID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteFollow = /* GraphQL */ `
+  mutation DeleteFollow(
+    $input: DeleteFollowInput!
+    $condition: ModelFollowConditionInput
+  ) {
+    deleteFollow(input: $input, condition: $condition) {
+      id
+      followerID
+      followingID
       createdAt
       updatedAt
       __typename
@@ -271,6 +676,7 @@ export const createChatRoomUser = /* GraphQL */ `
         id
         name
         imageUri
+        backgroundImageUri
         status
         lastOnlineAt
         phonenumber
@@ -306,6 +712,7 @@ export const updateChatRoomUser = /* GraphQL */ `
         id
         name
         imageUri
+        backgroundImageUri
         status
         lastOnlineAt
         phonenumber
@@ -341,6 +748,7 @@ export const deleteChatRoomUser = /* GraphQL */ `
         id
         name
         imageUri
+        backgroundImageUri
         status
         lastOnlineAt
         phonenumber

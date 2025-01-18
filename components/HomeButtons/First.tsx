@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, useColorScheme } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -15,6 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';  // Importing expo-image-picker
 
 type Props = {};
 
@@ -28,6 +29,8 @@ const First = (props: Props) => {
   const thirdValue = useSharedValue(30);
   const isOpen = useSharedValue(false);
   const progress = useDerivedValue(() => (isOpen.value ? withTiming(1) : withTiming(0)));
+
+  const [image, setImage] = useState<string | null>(null); // State to store the selected image URI
 
   const handlePress = () => {
     const config = {
@@ -44,6 +47,22 @@ const First = (props: Props) => {
       thirdValue.value = withSpring(290);
     }
     isOpen.value = !isOpen.value;
+  };
+
+  // Function to launch the camera and take a photo
+  const takePhoto = async () => {
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri); // Save the captured photo URI
+      console.log("Photo URI:", result.assets[0].uri); // Print the URI to send the image
+      // Here you can implement logic to send the image to the selected chat room
+    }
   };
 
   const firstIcon = useAnimatedStyle(() => {
@@ -80,31 +99,32 @@ const First = (props: Props) => {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      {/* Third Icon */}
+      
       <Animated.View style={[styles.contentContainer, thirdIcon, dynamicStyles.iconBackground]}>
-        <Pressable style={styles.iconContainer} onPress={() => router.push('/OpenCamera')}>
+        
+        <Pressable style={styles.iconContainer} onPress={takePhoto}> 
           <Feather name="camera" size={24} color={isDarkMode ? '#ffffff' : '#fff'} />
         </Pressable>
+        
       </Animated.View>
 
-      {/* Second Icon */}
+      
       <Animated.View style={[styles.contentContainer, secondIcon, dynamicStyles.iconBackground]}>
         <Pressable style={styles.iconContainer} onPress={() => router.push('/ScheduleMessage')}>
           <MaterialIcons name="schedule" size={24} color={isDarkMode ? '#ffffff' : '#fff'} />
         </Pressable>
       </Animated.View>
 
-      {/* First Icon */}
+     
       <Animated.View style={[styles.contentContainer, firstIcon, dynamicStyles.iconBackground]}>
-        <Pressable style={styles.iconContainer} onPress={() => router.push('/addFriends')}>
-          <AntDesign name="adduser" size={28} color={isDarkMode ? '#ffffff' : '#fff'} />
+        <Pressable style={styles.iconContainer} onPress={() => router.push('/contactsScreen')}>
+          <AntDesign name="adduser" size={25} color={isDarkMode ? '#ffffff' : '#fff'} />
         </Pressable>
       </Animated.View>
 
-      {/* Plus Icon */}
       <Pressable style={[styles.contentContainer]} onPress={handlePress}>
         <Animated.View style={[styles.iconContainer, plusIcon, dynamicStyles.iconBackground]}>
-          <Feather name="plus" size={28} color={isDarkMode ? '#ffffff' : '#fff'} />
+          <Feather name="plus" size={24} color={isDarkMode ? '#ffffff' : '#fff'} />
         </Animated.View>
       </Pressable>
     </View>
@@ -117,14 +137,13 @@ const getDynamicStyles = (isDarkMode: boolean) =>
       backgroundColor: isDarkMode ? '#121212' : '#f5f5f5',
     },
     iconBackground: {
-      backgroundColor: isDarkMode ? '#333' : '#3777f0',
+      backgroundColor: isDarkMode ? '#444' : '#5288FF',
     },
   });
 
 const styles = StyleSheet.create({
   container: {
     //flex: 1,
-
   },
   contentContainer: {
     position: 'absolute',
@@ -135,7 +154,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 55,
     height: 55,
-    borderRadius:25,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },

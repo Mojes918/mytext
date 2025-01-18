@@ -2,17 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
-  useWindowDimensions, 
   Image, 
   StyleSheet, 
-  Pressable, 
-  Appearance, 
-  Alert
+  Appearance 
 } from 'react-native';
-import { Entypo, Feather, Ionicons } from '@expo/vector-icons';
-import { API, Auth } from 'aws-amplify';
-import { listChatRoomUsersWithDetails } from '@/src/CustomQuery';
+import { Entypo, Feather } from '@expo/vector-icons';
+import { API, Auth, graphqlOperation } from 'aws-amplify';
+import { listChatRoomUsersWithDetails } from '@/src/CustomQuery'; // Adjust your import path
 import * as ImagePicker from 'expo-image-picker';
+import { onUpdateUser } from '@/src/graphql/subscriptions'; // Adjust the import path of the subscription
+
 interface ChatRoomUser {
   id: string;
   chatRoomId: string;
@@ -25,13 +24,13 @@ interface User {
   name: string;
   imageUri?: string;
   status?: string;
+  lastOnlineAt: number;
 }
 
 const ChatRoomHeader = ({ id }: { id: any }) => {
-  
   const [user, setUser] = useState<User | null>(null);
+  const [image, setImage] = useState<string | null>(null);
 
- const [image, setImage] = useState<string | null>(null);
   // Detect system color scheme
   const colorScheme = Appearance.getColorScheme();
   const isDarkMode = colorScheme === 'dark';
@@ -61,11 +60,50 @@ const ChatRoomHeader = ({ id }: { id: any }) => {
     fetchUsers();
   }, [id]);
 
-  const backbutton = () => {
-    // Handle back button press
-    console.log('Back button pressed');
-  };
 
+
+//console.log("user ",user);
+  
+const getUserStatus = (lastOnlineAt: number | null): string => {
+  if (!lastOnlineAt || lastOnlineAt <= 0) {
+    return 'unknown'; // Fallback if lastOnlineAt is invalid
+  }
+
+  const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+  const onlineThreshold = 120; // 5 minutes
+
+  if (currentTime - lastOnlineAt <= onlineThreshold) {
+    return 'Online';
+  }
+
+  const lastSeenDate = new Date(lastOnlineAt * 1000); // Convert to JavaScript Date
+
+  // Format the time (e.g., "3:30 AM")
+  const formattedTime = lastSeenDate.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  // Check if the last seen was today
+  const today = new Date();
+  const isToday =
+    lastSeenDate.getDate() === today.getDate() &&
+    lastSeenDate.getMonth() === today.getMonth() &&
+    lastSeenDate.getFullYear() === today.getFullYear();
+
+  if (isToday) {
+    return `Last seen at ${formattedTime}`;
+  }
+
+  // Format the date if not today (e.g., "Jan 1 at 3:30 AM")
+  const formattedDate = lastSeenDate.toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+  });
+
+  return `Last seen on ${formattedDate} at ${formattedTime}`;
+};
 
 
   const takePhoto = async () => {
@@ -81,59 +119,42 @@ const ChatRoomHeader = ({ id }: { id: any }) => {
     }
   };
 
-  
-
-  
-
   return (
     <View 
-      style={[
-        styles.container, 
-        { 
-          width:"auto", 
-          backgroundColor: isDarkMode ? '#121212' : '#ffffff' 
-        }
-      ]}
+      style={[styles.container, { backgroundColor: isDarkMode ? '#121212' : '#ffffff' }]}
     >
-     {/* <Pressable onPress={backbutton}>
-        <Ionicons 
-          name="arrow-back-outline" 
-          size={24} 
-          color={isDarkMode ? '#ffffff' : '#000000'} 
-        />
-      </Pressable>*/}
       <View style={styles.userInfoContainer}>
-        <Image
-          source={{ uri: user?.imageUri || 'https://via.placeholder.com/30' }}
-          style={[styles.userImage, { backgroundColor: isDarkMode ? '#303030' : '#CCCCCC' }]}
-        />
-        <Text 
-          style={[styles.userName, { color: isDarkMode ? '#ffffff' : '#333333' }]} 
-          numberOfLines={1}
-        >
-          {user?.name || 'Loading...'}
-        </Text>
-        
-        <View style={styles.iconsContainer}>
-          {/*
-        <Feather 
-            name="video" 
-            size={24} 
-            color={isDarkMode ? '#fff' : '#007AFF'} 
-            style={styles.icon} 
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Image
+            source={{ uri: user?.imageUri || 'https://via.placeholder.com/30' }}
+            style={[styles.userImage, { backgroundColor: isDarkMode ? '#303030' : '#CCCCCC' }]}
           />
-          <Ionicons 
-            name="call-outline" 
+          <View>
+            <Text 
+              style={[styles.userName, { color: isDarkMode ? '#ffffff' : '#333333' }]} 
+              numberOfLines={1}
+            >
+              {user?.name || 'Loading...'}
+            </Text>
+           {user?.lastOnlineAt&&           
+  <Text style={[styles.userName, { color: isDarkMode ? '#fff' : '#000', fontSize: 11 }]}>
+    {getUserStatus(user?.lastOnlineAt)}
+  </Text>}
+          </View>
+        </View>
+
+        <View style={styles.iconsContainer}>
+          <Feather 
+            name="camera" 
             size={24} 
-            color={isDarkMode ? '#fff' : '#007AFF'} 
+            color={isDarkMode ? '#fff' : '#333'} 
             style={styles.icon} 
-          />*/}
-          <Feather name="camera" size={24}  color={isDarkMode ? '#fff' : '#007AFF'} 
-            style={styles.icon}  onPress={takePhoto}/>
+            onPress={takePhoto}
+          />
           <Entypo 
             name="dots-three-vertical" 
             size={20} 
-            color={isDarkMode ? '#fff' : '#007AFF'} 
+            color={isDarkMode ? '#fff' : '#333'} 
             style={styles.icon} 
           />
         </View>
@@ -146,18 +167,16 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 5,
+    paddingHorizontal: 0,
     paddingVertical: 10,
-    gap:10
+    gap: 10,
   },
   userInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     justifyContent: 'space-between',
-    marginLeft:-30,
-  
+    marginLeft: -30,
   },
   userImage: {
     width: 32,
@@ -173,10 +192,11 @@ const styles = StyleSheet.create({
   iconsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 10,
+    marginLeft: 0,
+    gap:20
   },
   icon: {
-    marginHorizontal: 10,
+    marginHorizontal: 0,
   },
 });
 

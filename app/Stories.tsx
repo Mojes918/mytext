@@ -3,14 +3,14 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity, useColorScheme } fr
 import { Avatar } from 'react-native-paper';
 
 const statusUpdates = [
-  { id: '1', name: 'Sudheer', time: '41 minutes ago', imageUrl: require('../../assets/images/images1.jpg') },
-  { id: '2', name: 'Bsp', time: '3 minutes ago', imageUrl: require('../../assets/images/images2.jpg') },
-  { id: '3', name: 'Prasanth', time: 'Yesterday', imageUrl: require('../../assets/images/images3.jpg') },
-  { id: '4', name: 'David E', time: 'Yesterday', imageUrl: require('../../assets/images/images4.jpg') },
-  { id: '5', name: 'Ajith Varma', time: 'Yesterday', imageUrl: require('../../assets/images/images5.jpg') },
-  { id: '6', name: 'Raj', time: 'Yesterday', imageUrl: require('../../assets/images/images10.jpg') },
-  { id: '7', name: 'Kumar', time: 'Yesterday', imageUrl: require('../../assets/images/images7.jpg') },
-  { id: '8', name: 'Sis', time: 'Yesterday', imageUrl: require('../../assets/images/images8.jpg') },
+  { id: '1', name: 'Sudheer', time: '41 minutes ago', imageUrl: require('../assets/images/images1.jpg') },
+  { id: '2', name: 'Bsp', time: '3 minutes ago', imageUrl: require('../assets/images/images2.jpg') },
+  { id: '3', name: 'Prasanth', time: 'Yesterday', imageUrl: require('../assets/images/images3.jpg') },
+  { id: '4', name: 'David E', time: 'Yesterday', imageUrl: require('../assets/images/images4.jpg') },
+  { id: '5', name: 'Ajith Varma', time: 'Yesterday', imageUrl: require('../assets/images/images5.jpg') },
+  { id: '6', name: 'Raj', time: 'Yesterday', imageUrl: require('../assets/images/images10.jpg') },
+  { id: '7', name: 'Kumar', time: 'Yesterday', imageUrl: require('../assets/images/images7.jpg') },
+  { id: '8', name: 'Sis', time: 'Yesterday', imageUrl: require('../assets/images/images8.jpg') },
 ];
 
 const Stories = () => {

@@ -9,7 +9,7 @@ import { useColorScheme } from '@/components/useColorScheme'; // Custom hook to 
 import ChatRoomHeader from '@/components/ChatRoomHeader';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-
+import { GestureHandlerRootView} from 'react-native-gesture-handler';
 // Define the Param List
 type RootStackParamList = {
   ChatRoomScreen: { id: string }; // Define the `id` parameter
@@ -30,6 +30,7 @@ export const unstable_settings = {
 function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    Roboto: require('../assets/fonts/Roboto-Bold.ttf'),
     ...FontAwesome.font,
   });
 
@@ -72,13 +73,14 @@ function RootLayoutNav() {
   }
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)/index" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)/two" options={{ headerShown: true, headerTitle: 'Stories' }} />
         <Stack.Screen name="(tabs)/settings" options={{ headerShown: true, headerTitle: 'Settings' }} />
-
+        
         {/* Use the Param List for route props */}
         <Stack.Screen
           name="ChatRoomScreen"
@@ -87,18 +89,19 @@ function RootLayoutNav() {
            // headerBackVisible:false
           })}
         />
-
-        <Stack.Screen name="UsersScreen" options={{ headerShown: true }} />
-        <Stack.Screen
-          name="addFriends"
-          options={{ headerShown: true, headerTitle: 'Add New' }}
-        />
-        <Stack.Screen name="profile" options={{ headerShown: true }} />
+        <Stack.Screen name="SearchProfile" options={{ headerShown: true,headerTitle:"Search" }} />
+        <Stack.Screen name="AddNewPosts" options={{ headerShown: true,headerTitle:"Add Post" }} />
+        <Stack.Screen name="UserSocialProfile" options={{ headerShown: true ,headerTitle:"My Profile"}} />
+        <Stack.Screen name="ProfileScreen" options={{ headerShown: true }} />
+        <Stack.Screen name="EditProfile" options={{ headerShown: true }} />
+        <Stack.Screen name="SelectContact.tsx" options={{ headerShown: true }} />
+        <Stack.Screen name="contactsScreen" options={{ headerShown: true }} />
         <Stack.Screen name="ScheduleMessage" options={{ headerShown: true }} />
         <Stack.Screen name="OpenCamera" options={{ headerShown: true }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

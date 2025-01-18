@@ -10,6 +10,9 @@ export const listChatRoomUsersWithDetails = /* GraphQL */ `
           name
           imageUri
           status
+          lastOnlineAt
+          phonenumber
+          email
         }
       }
     }

@@ -4,72 +4,67 @@ import {
   Text,
   Image,
   TouchableOpacity,
-  Pressable,
+  StyleSheet,
   useColorScheme,
-  Alert,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { API, Auth } from 'aws-amplify';
-import { listChatRoomUsersWithDetails } from '@/src/CustomQuery'; // Import the GraphQL query
+import { listChatRoomUsersWithDetails } from '@/src/CustomQuery';
 import { getMessage } from '@/src/graphql/queries';
 
-// Interfaces for TypeScript
+// Icon Libraries
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+const defaultImage = 'https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg';
+// Interfaces
 interface Message {
-  content: string;
-  createdAt: string;
+  content?: string;
+  createdAt?: string;
+  image?: string;
+  audio?: string;
 }
 
 interface User {
   id: string;
   name: string;
   imageUri?: string;
-  status?: string;
 }
 
 interface ChatRoom {
   id: string;
   newMessages: number;
   lastMessage: Message | null;
-  chatRoomLastMessageId?: string; // Add chatRoomLastMessageId for fetching last message
+  chatRoomLastMessageId?: string;
 }
 
-interface ChatRoomUser {
-  id: string;
-  chatRoomId: string;
-  userId: string;
-  user: User;
-}
-
+// Main Component
 export default function ChatListItem({ chatRoom }: { chatRoom: ChatRoom }) {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
-const lastText=isDarkMode?"#A9A9A9":"#666";
-  const textColor = isDarkMode ? 'white' : 'black';
-  const bgColor = isDarkMode ? '#121212' : '#ffffff';
-  const borderColor = isDarkMode ? '#565656' : '#666';
 
   const [user, setUser] = useState<User | null>(null);
   const [lastMessage, setLastMessage] = useState<Message | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         const authUser = await Auth.currentAuthenticatedUser();
-        const chatRoomUsersResponse = await API.graphql({
+        const response = await API.graphql({
           query: listChatRoomUsersWithDetails,
-          variables: {
-            filter: { chatRoomId: { eq: chatRoom.id } },
-          },
+          variables: { filter: { chatRoomId: { eq: chatRoom.id } } },
         });
 
-        const users: ChatRoomUser[] = chatRoomUsersResponse?.data?.listChatRoomUsers?.items || [];
-        const fetchedUsers = users.map((chatRoomUser) => chatRoomUser.user).filter((u) => u.id !== authUser.attributes.sub);
-
-        setUser(fetchedUsers[0] || null);
+        const users = response?.data?.listChatRoomUsers?.items.map(
+          (item: any) => item.user
+        ) || [];
+        const otherUsers = users.filter((u: User) => u.id !== authUser.attributes.sub);
+        setUser(otherUsers[0] || null);
       } catch (error) {
         console.error('Error fetching users:', error);
-        Alert.alert('Error', 'Failed to fetch chat room users.');
       }
     };
 
@@ -78,129 +73,231 @@ const lastText=isDarkMode?"#A9A9A9":"#666";
 
   useEffect(() => {
     const fetchLastMessage = async () => {
-      if (!chatRoom.chatRoomLastMessageId) return console.log("No chat room last message ID");
-  
+      if (!chatRoom.chatRoomLastMessageId) return;
       try {
         const response = await API.graphql({
           query: getMessage,
-          variables: {
-            id: chatRoom.chatRoomLastMessageId,
-          },
+          variables: { id: chatRoom.chatRoomLastMessageId },
         });
-  
-        const fetchedMessage = response?.data?.getMessage;
-        setLastMessage(fetchedMessage || null);
+        setLastMessage(response?.data?.getMessage || null);
       } catch (error) {
         console.error('Error fetching last message:', error);
-        Alert.alert('Error', 'Failed to fetch the last message.');
       }
     };
-  
+
     fetchLastMessage();
   }, [chatRoom.chatRoomLastMessageId]);
 
+  const formatTime = (timestamp?: string) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString();
+  };
+
+  const openModal = (imageUri: string) => {
+    setSelectedImage(imageUri);
+    setIsModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setIsModalVisible(false);
+    setSelectedImage(null);
+  };
+
   if (!user) {
     return (
-      <View style={{ padding: 20 }}>
-        <Text style={{ textAlign: 'center', color: textColor }}>No Chats Available</Text>
+      <View style={styles.loader}>
+        <Text style={[styles.text, { color: isDarkMode ? '#fff' : '#000' }]}>
+          Loading...
+        </Text>
       </View>
     );
   }
 
-  const formatTime = (timestamp: string) => {
-    const messageDate = new Date(timestamp);
-    const now = new Date();
-  
-    // Check if the message is from today
-    if (
-      messageDate.getDate() === now.getDate() &&
-      messageDate.getMonth() === now.getMonth() &&
-      messageDate.getFullYear() === now.getFullYear()
-    ) {
-      let hours = messageDate.getHours();
-      const minutes = messageDate.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
-      const formattedMinutes = minutes.toString().padStart(2, '0');
-      return `${hours}:${formattedMinutes} ${ampm}`;
-    }
-  
-    // Check if the message is from yesterday
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-  
-    if (
-      messageDate.getDate() === yesterday.getDate() &&
-      messageDate.getMonth() === yesterday.getMonth() &&
-      messageDate.getFullYear() === yesterday.getFullYear()
-    ) {
-      return 'Yesterday';
-    }
-  
-    // Otherwise, return the formatted date
-    const month = (messageDate.getMonth() + 1).toString().padStart(2, '0'); // Months are zero-based
-    const day = messageDate.getDate().toString().padStart(2, '0');
-    const year = messageDate.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
-  
-
   return (
-    <TouchableOpacity onPress={() => router.push(`/ChatRoomScreen?id=${chatRoom.id}`)}>
-      <View style={{ paddingTop: 20, backgroundColor: bgColor }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 5,gap:10 }}>
-          <Pressable>
+    <View>
+      <TouchableOpacity onPress={() => router.push(`/ChatRoomScreen?id=${chatRoom.id}`)}>
+        <View style={[styles.container, { backgroundColor: isDarkMode ? '#111' : '#fff' }]}>
+          <TouchableOpacity onPress={() => openModal(user.imageUri || '')}>
             <Image
-              source={
-                user.imageUri
-                  ? { uri: user.imageUri }
-                  : require('../../assets/images/default-user.png')
-              }
-              style={{
-                height: 50,
-                width: 50,
-                borderRadius: 25,
-                borderWidth: 2,
-                borderColor,
-              }}
+              source={{ uri: user.imageUri || defaultImage}  }
+              style={[styles.image, { borderColor: isDarkMode ? '#666' : '#ccc' }]}
             />
-            {chatRoom.newMessages > 0 && (
-              <View
-                style={{
-                  height: 20,
-                  width: 20,
-                  backgroundColor: '#3777f0',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 15,
-                  position: 'absolute',
-                  left: 40,
-                  top: -2,
-                  borderColor: 'white',
-                  borderWidth: 1,
-                }}
-              >
-                <Text style={{ color: 'white', fontSize: 12 }}>{chatRoom.newMessages}</Text>
-              </View>
-            )}
-          </Pressable>
-
-          <View style={{ flex: 1, paddingHorizontal: 5,gap:5 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontWeight: 'medium', fontSize: 18, color: textColor }}>{user.name}</Text>
-              {lastMessage?.createdAt && (
-                <Text style={{ color: isDarkMode ? '#f2f2f2' : '#777777', fontSize: 12 }}>
-                   {lastMessage?.createdAt && formatTime(lastMessage.createdAt)}
-                </Text>
-              )}
+          </TouchableOpacity>
+          {chatRoom.newMessages > 0 ? (
+  <View style={styles.badge}>
+    <Text style={styles.badgeText}>{chatRoom.newMessages}</Text>
+  </View>
+) : null}
+          <View style={styles.infoContainer}>
+            <View style={styles.row}>
+              <Text style={[styles.name, { color: isDarkMode ? '#fff' : '#000' }]}>{user.name}</Text>
+              <Text style={[styles.timestamp, { color: isDarkMode ? '#aaa' : '#666' }]}>
+                {formatTime(lastMessage?.createdAt)}
+              </Text>
             </View>
-            <Text style={{ fontSize: 14, color:lastText }} numberOfLines={1}>
-              {lastMessage?.content || 'Say hi 👋'}
+            <Text style={[styles.messagePreview, { color: isDarkMode ? '#aaa' : '#666' }]}>
+              {lastMessage?.content ||
+                (lastMessage?.image && (
+                  <>
+                    <Text>Photo </Text>
+                    <Feather name="image" size={14} />
+                  </>
+                )) ||
+                (lastMessage?.audio && (
+                  <>
+                    <Text>Voice Message </Text>
+                    <MaterialCommunityIcons name="microphone-outline" size={14} />
+                  </>
+                )) ||
+                'No message yet'}
             </Text>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      {/* Full-Screen Modal */}
+     {/* Full-Screen Modal */}
+{/* Full-Screen Modal */}
+<Modal
+  visible={isModalVisible}
+  transparent={true}
+  animationType="fade"
+  onRequestClose={closeModal}
+>
+  <Pressable style={styles.modalOverlay} onPress={closeModal}>
+    <View style={styles.modalContent}>
+      {selectedImage && (
+        <View>
+          {/* Display the Image */}
+          <Image
+            source={{ uri: selectedImage|| defaultImage }}
+            style={styles.fullscreenImage}
+            resizeMode="cover"
+          />
+          
+          {/* Profile Icon */}
+          <TouchableOpacity
+            style={styles.profileIconContainer}
+            onPress={() => {
+              closeModal();
+              router.push({
+                pathname:"/ProfileScreen",
+                params:{id:user?.id}
+              });
+            }}
+          >
+            <MaterialCommunityIcons
+              name="account-circle-outline"
+              size={30}
+              color="#fff"
+            />
+          </TouchableOpacity>
+          
+          {/* Message Icon */}
+          <TouchableOpacity
+            style={styles.messageIconContainer}
+            onPress={() => {
+              closeModal();
+              router.push(`/ChatRoomScreen?id=${chatRoom.id}`);
+            }}
+          >
+            <MaterialCommunityIcons
+              name="message-text-outline"
+              size={30}
+              color="#fff"
+            />
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  </Pressable>
+</Modal>
+
+
+    </View>
   );
 }
+
+// Styles
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    padding: 10,
+    alignItems: 'center',
+  },
+  image: {
+    height: 52,
+    width: 52,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    position: 'relative', // Ensure relative positioning
+  },
+  badge: {
+    position: 'absolute',
+    left: 50, // Adjust as needed
+    top: 10,  // Adjust as needed
+    backgroundColor: '#3777f0',
+    height: 18,
+    width: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  badgeText: { 
+    color: '#fff', 
+    fontSize: 10, 
+    fontWeight: 'bold' 
+  },
+  
+  infoContainer: { flex: 1, marginLeft: 15 },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  name: { fontWeight: '600', fontSize: 16 },
+  timestamp: { fontSize: 12 },
+  messagePreview: { fontSize: 14 },
+  loader: { padding: 20, alignItems: 'center' },
+  text: { fontSize: 16 },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    height: '90%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: 250, // Fixed width
+    height: 300, // Fixed height
+    borderRadius:10, // Optional for rounded corners
+  },
+  profileIconContainer: {
+    position: 'absolute',
+    bottom: 0, // Adjust position as needed
+    left:60, // Adjust position as needed
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 10,
+    borderRadius: 20,
+  },
+  messageIconContainer: {
+    position: 'absolute',
+    bottom: 0, // Adjust position as needed
+    right: 60, // Adjust position as needed
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 10,
+    borderRadius: 20,
+  },
+});

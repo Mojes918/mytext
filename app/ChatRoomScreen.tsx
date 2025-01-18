@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, useColorScheme, Alert, Image } from 'react-native';
+import { View, Text, FlatList, useColorScheme, Alert, Image, ImageBackground, Modal, TouchableWithoutFeedback, TouchableOpacity, StyleSheet } from 'react-native';
 import Message from '@/components/Message/Message';
 import MessageInput from '@/components/Message/MessageInput';
 import { useRoute, RouteProp } from '@react-navigation/native';
@@ -9,29 +9,32 @@ import { ActivityIndicator } from 'react-native-paper';
 import { onCreateMessage } from '../src/graphql/subscriptions';
 import ChatRoomHeader from '@/components/ChatRoomHeader';
 import { listChatRoomUsersWithDetails } from '@/src/CustomQuery';
-
+import * as mutations from "../src/graphql/mutations";
+import Svg, { Circle, Line } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 type MessageType = {
   id: string;
   content: string;
   userID: string;
   createdAt: string;
   chatroomID: string;
+  status: string;
+  replyToMessageID:string;
 };
+
 interface User {
   id: string;
   name: string;
   imageUri?: string;
   status?: string;
 }
+
 interface ChatRoomUser {
   id: string;
   chatRoomId: string;
   userId: string;
   user: User;
 }
-type RootStackParamList = {
-  ChatRoomScreen: { id: string };
-};
 
 type ChatRoomType = {
   id: string;
@@ -63,6 +66,68 @@ const ChatRoomScreen = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [chatRoom, setChatRoom] = useState<ChatRoomType | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [viewableMessageIds, setViewableMessageIds] = useState<string[]>([]);
+  const [messageReply,setMessageReply]=useState<MessageType|null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [fetchUser, setFetchUser] = useState<string | null>(null);
+  
+
+
+  const onViewableItemsChanged = ({ viewableItems }: { viewableItems: any[] }) => {
+    const visibleMessageIds = viewableItems.map((item) => item.item.id);
+    setViewableMessageIds((prevIds) => Array.from(new Set([...prevIds, ...visibleMessageIds])));
+  };
+
+  useEffect(() => {
+    if (viewableMessageIds.length > 0) {
+      markMessagesAsRead(viewableMessageIds);
+    }
+  }, [viewableMessageIds]);
+  
+
+
+const markMessagesAsRead = async (messageIds: string[]) => {
+  try {
+    const authUser = await Auth.currentAuthenticatedUser();
+    let updatedChatRoom = { ...chatRoom }; // Copy current chat room state
+
+    // Mark each message as read
+    for (const messageId of messageIds) {
+      const message = messages.find((msg) => msg.id === messageId);
+      if (message && message.userID !== authUser.attributes.sub && message.status !== 'READ') {
+        await API.graphql({
+          query: mutations.updateMessage,
+          variables: {
+            input: {
+              id: messageId,
+              status: 'READ',
+            },
+          },
+        });
+      }
+    }
+
+    // Update the chat room's newMessages count
+    if (updatedChatRoom) {
+      updatedChatRoom.newMessages = 0; // Reset newMessages to 0 after messages are viewed
+      await API.graphql({
+        query: mutations.updateChatRoom,
+        variables: {
+          input: {
+            id: updatedChatRoom.id,
+            newMessages: updatedChatRoom.newMessages,
+          },
+        },
+      });
+      setChatRoom(updatedChatRoom); // Update the local state with the new value
+    }
+
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+  }
+};
+
+  
 
   useEffect(() => {
     fetchChatRoom();
@@ -82,8 +147,21 @@ const ChatRoomScreen = () => {
     ).subscribe({
       next: ({ value }) => {
         const newMessage = value.data.onCreateMessage;
+         // Update the last message ID in the chat room
+      setChatRoom((prevChatRoom) => {
+        if (prevChatRoom) {
+          return {
+            ...prevChatRoom,
+            chatRoomLastMessageId: newMessage.id,
+          };
+        }
+        return prevChatRoom;
+      });
+      
         setMessages((existingMessages) => {
-          const updatedMessages = [newMessage, ...existingMessages];
+          const updatedMessages = [newMessage, ...existingMessages].filter((msg, index, self) =>
+            index === self.findIndex((m) => m.id === msg.id) // Ensures unique message IDs
+          );
           updatedMessages.sort((b, a) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
           return updatedMessages;
         });
@@ -121,27 +199,31 @@ const ChatRoomScreen = () => {
   };
 
   const fetchMessages = async () => {
-    setLoadingMessages(true);
-    try {
-      const messagesResponse = (await API.graphql({
-        query: listMessages,
-        variables: {
-          filter: { chatroomID: { eq: chatRoom?.id } },
-          limit: 100,
-        },
-      })) as ListMessagesResponse;
+    let nextToken = null;
+    let allMessages = [];
 
-      const fetchedMessages = messagesResponse?.data?.listMessages?.items || [];
-      const sortedMessages = fetchedMessages.sort((b, a) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
+    try {
+      do {
+        const result = await API.graphql(
+          graphqlOperation(listMessages, {
+            filter: { chatroomID: { eq: chatRoom?.id } },
+            limit: 50,
+            nextToken,
+          })
+        );
+
+        allMessages = [...allMessages, ...(result?.data?.listMessages?.items || [])];
+        nextToken = result?.data?.listMessages?.nextToken;
+      } while (nextToken);
+
+      const sortedMessages = allMessages
+  .filter((message) => (message.content || message.image || message.audio) && message.createdAt)
+  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
 
       setMessages(sortedMessages);
     } catch (error) {
-      console.error('Error fetching messages:', error);
-      Alert.alert('Error', 'Failed to fetch messages.');
-    } finally {
-      setLoadingMessages(false);
+      console.error("Error fetching messages with pagination:", error);
     }
   };
 
@@ -156,12 +238,13 @@ const ChatRoomScreen = () => {
           query: listChatRoomUsersWithDetails,
           variables: { filter: { chatRoomId: { eq: chatRoomId } } },
         });
-
+   setAuthUserId(authUser.attributes.sub);
+   
         const users: ChatRoomUser[] = chatRoomUsersResponse?.data?.listChatRoomUsers?.items || [];
         const fetchedUsers = users
           .map((chatRoomUser) => chatRoomUser.user)
           .filter((u) => u.id !== authUser.attributes.sub);
-
+        setFetchUser(fetchedUsers[0]||null);
         setUser(fetchedUsers[0] || null);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -190,7 +273,8 @@ const ChatRoomScreen = () => {
             {messageDate.toDateString()}
           </Text>
         )}
-        <Message message={item} isFirst={index === 0} isSameUser={index > 0 && item.userID === messages[index + 1]?.userID} />
+        
+        <Message message={item} isFirst={index === 0} isSameUser={index > 0 && item.userID === messages[index + 1]?.userID} setAsMessageReply={()=>setMessageReply(item)} authUserId={authUserId} messageReply={messageReply} fetchUser={fetchUser}/>
       </View>
     );
   };
@@ -201,11 +285,16 @@ const ChatRoomScreen = () => {
 
   return (
     <View style={{ backgroundColor: isDarkMode ? '#121212' : 'white', flex: 1 }}>
+      
       {loadingMessages && <ActivityIndicator size="large" />}
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}
         inverted
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={{
+          itemVisiblePercentThreshold: 50, // Mark message as seen if 50% is visible
+        }}
         initialNumToRender={20}
         maxToRenderPerBatch={10}
         renderItem={renderItem}
@@ -216,21 +305,35 @@ const ChatRoomScreen = () => {
               source={{ uri: user?.imageUri || 'https://via.placeholder.com/30' }}
               style={{ height: 120, width: 120, borderRadius: 60 }}
             />
-            <Text style={{ fontSize: 25, margin: 10, fontWeight: 'bold', color: isDarkMode ? '#fff' : '#000' }}>
+            <Text style={{ fontSize: 25, margin: 10, fontWeight: 'bold', color: isDarkMode ? 'white' : 'black' }}>
               {user?.name}
             </Text>
-           {/* <Text style={{alignSelf:"center",fontSize:15,padding:12,color: isDarkMode ? '#fff' : '#000',}}>{user?.phonenumber}</Text>*/}
           </View>
         }
-        ListEmptyComponent={() => (
-          <Text style={{ textAlign: 'center', marginTop: 20, color: isDarkMode ? '#BBBBBB' : 'gray' }}>
-            No Messages Yet!
-          </Text>
-        )}
       />
-      <MessageInput chatRoom={chatRoom} />
+      <MessageInput chatRoom={chatRoom} messageReply={messageReply} removeMessageReply={()=>setMessageReply(null)}   authUserId={authUserId} user={user}/>
+     
     </View>
+    
   );
 };
 
 export default ChatRoomScreen;
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: '90%',
+    height: '80%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+  },
+});
+

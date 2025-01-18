@@ -3,34 +3,40 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 
-// Define the props type
 interface AudioPlayerProps {
   soundUri: string;
-  onClose?: () => void; // Optional callback for closing
-  isSent?: boolean; // Determines if the message is sent
-  onDeleteAudio?: () => void; // Callback for deleting the audio
+  onClose?: () => void;
+  isSent?: boolean;
+  onDeleteAudio?: () => void;
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ soundUri, onClose, isSent = false, onDeleteAudio }) => {
-  const [paused, setPaused] = useState(true);
+  const [isPaused, setIsPaused] = useState(true);  // Initially paused
   const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [audioProgress, setAudioProgress] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    const loadSound = async () => {
+    let isMounted = true;
+
+    const loadAudio = async () => {
       if (!soundUri) return;
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: soundUri },
-        {},
-        onPlaybackStatusUpdate
-      );
-      setSound(sound);
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: soundUri },
+          {},
+          onPlaybackStatusUpdate
+        );
+        if (isMounted) setSound(sound);
+      } catch (error) {
+        console.error("Error loading audio:", error);
+      }
     };
 
-    loadSound();
+    loadAudio();
 
     return () => {
+      isMounted = false;
       if (sound) {
         sound.unloadAsync();
       }
@@ -39,71 +45,83 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ soundUri, onClose, isSent = f
 
   const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
     if (!status.isLoaded) return;
-    setAudioProgress(status.positionMillis / (status.durationMillis || 1));
-    setPaused(!status.isPlaying);
-    setAudioDuration(status.durationMillis || 0);
+
+    // Update progress
+    setProgress(status.positionMillis / (status.durationMillis || 1));
+    setDuration(status.durationMillis || 0);
 
     if (status.didJustFinish) {
-      // Reset to the start after playback ends
-      setAudioProgress(0);
-      setPaused(true);
-    }
-  };
-
-  const playPauseSound = async () => {
-    if (!sound) return;
-    if (paused) {
-      await sound.playAsync();
+      // When finished, stop playing and reset to the beginning
+      setProgress(0);
+      setIsPaused(true); // Stop playing after finish
+      if (sound) {
+        sound.setPositionAsync(0); // Reset to the beginning
+      }
     } else {
-      await sound.pauseAsync();
+      setIsPaused(!status.isPlaying); // Pause or play depending on status
     }
   };
 
-  const stopAndUnloadSound = async () => {
+  const togglePlayPause = async () => {
+    if (!sound) return;
+    try {
+      if (isPaused) {
+        // If paused, play the audio
+        await sound.playAsync();
+        setIsPaused(false);  // Set to playing
+      } else {
+        // If playing, pause the audio
+        await sound.pauseAsync();
+        setIsPaused(true);  // Set to paused
+      }
+    } catch (error) {
+      console.error("Error controlling playback:", error);
+    }
+  };
+
+  const stopAndUnload = async () => {
     if (sound) {
-      await sound.stopAsync();
-      await sound.unloadAsync();
-      setSound(null);
-      if (onClose) onClose(); // Inform parent to remove the container
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setSound(null);
+        if (onClose) onClose();
+      } catch (error) {
+        console.error("Error stopping/unloading sound:", error);
+      }
     }
   };
 
-  const handleDeleteAudio = async () => {
+  const deleteAudio = async () => {
     if (onDeleteAudio) {
-      onDeleteAudio(); // Inform parent to delete the audio
+      onDeleteAudio();
     }
-    stopAndUnloadSound(); // Also stop and unload the audio
+    stopAndUnload();
   };
 
-  const getElapsedTime = () => {
-    const elapsedMillis = audioProgress * audioDuration;
-    const minutes = Math.floor(elapsedMillis / (60 * 1000));
-    const seconds = Math.floor((elapsedMillis % (60 * 1000)) / 1000);
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
-
-  const getTotalDuration = () => {
-    const minutes = Math.floor(audioDuration / (60 * 1000));
-    const seconds = Math.floor((audioDuration % (60 * 1000)) / 1000);
+  const formatTime = (millis: number) => {
+    const minutes = Math.floor(millis / 60000);
+    const seconds = Math.floor((millis % 60000) / 1000);
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.audioContainer}>
-        {/* Conditionally render the close icon only if not sent */}
         {!isSent && (
-          <Pressable style={styles.controlButton} onPress={handleDeleteAudio}>
+          <Pressable style={styles.iconButton} onPress={deleteAudio}>
             <AntDesign name="closecircleo" size={20} color="black" />
           </Pressable>
         )}
-        <Pressable style={styles.controlButton} onPress={playPauseSound}>
-          <Feather name={paused ? 'play' : 'pause'} size={24} color="black" />
+        <Pressable style={styles.iconButton} onPress={togglePlayPause}>
+          <Feather name={isPaused ? 'play' : 'pause'} size={24} color="black" />
         </Pressable>
         <View style={styles.progressContainer}>
-          <View style={[styles.progressBar, { width: `${audioProgress * 100}%` }]} />
+          <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
         </View>
-        <Text style={styles.timer}>{`${getElapsedTime()} / ${getTotalDuration()}`}</Text>
+        <Text style={styles.timer}>
+          {`${formatTime(progress * duration)} / ${formatTime(duration)}`}
+        </Text>
       </View>
     </View>
   );
@@ -113,42 +131,39 @@ export default AudioPlayer;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'lightgray',
-    maxWidth: '80%',
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    margin: 3,
+    backgroundColor: '#f9f9f9',
+    maxWidth: '85%',
+    padding: 10,
+    borderRadius: 12,
+    margin: 5,
   },
   audioContainer: {
     flexDirection: 'row',
-    marginVertical: 10,
-    padding: 15,
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: 'gray',
+    borderColor: '#ccc',
     borderRadius: 10,
+    padding: 12,
+    backgroundColor: '#fff',
   },
-  controlButton: {
+  iconButton: {
     marginHorizontal: 8,
   },
   progressContainer: {
     flex: 1,
-    height: 5,
-    backgroundColor: '#D3D3D3',
-    borderRadius: 5,
+    height: 4,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 2,
     marginHorizontal: 10,
-    position: 'relative',
+    overflow: 'hidden',
   },
   progressBar: {
-    height: 5,
-    backgroundColor: '#3777f0',
-    borderRadius: 5,
-    position: 'absolute',
+    height: 4,
+    backgroundColor: '#4caf50',
   },
   timer: {
-    paddingHorizontal: 10,
     fontSize: 12,
-    color: 'black',
+    color: '#555',
+    marginLeft: 10,
   },
 });

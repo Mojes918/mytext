@@ -12,6 +12,8 @@ export const onCreateMessage = /* GraphQL */ `
       chatroomID
       status
       replyToMessageId
+      scheduledTime
+      isScheduled
       createdAt
       updatedAt
       __typename
@@ -29,6 +31,8 @@ export const onUpdateMessage = /* GraphQL */ `
       chatroomID
       status
       replyToMessageId
+      scheduledTime
+      isScheduled
       createdAt
       updatedAt
       __typename
@@ -46,6 +50,8 @@ export const onDeleteMessage = /* GraphQL */ `
       chatroomID
       status
       replyToMessageId
+      scheduledTime
+      isScheduled
       createdAt
       updatedAt
       __typename
@@ -66,6 +72,8 @@ export const onCreateChatRoom = /* GraphQL */ `
         chatroomID
         status
         replyToMessageId
+        scheduledTime
+        isScheduled
         createdAt
         updatedAt
         __typename
@@ -99,6 +107,8 @@ export const onUpdateChatRoom = /* GraphQL */ `
         chatroomID
         status
         replyToMessageId
+        scheduledTime
+        isScheduled
         createdAt
         updatedAt
         __typename
@@ -132,6 +142,8 @@ export const onDeleteChatRoom = /* GraphQL */ `
         chatroomID
         status
         replyToMessageId
+        scheduledTime
+        isScheduled
         createdAt
         updatedAt
         __typename
@@ -157,6 +169,7 @@ export const onCreateUser = /* GraphQL */ `
       id
       name
       imageUri
+      backgroundImageUri
       status
       Messages {
         nextToken
@@ -169,6 +182,18 @@ export const onCreateUser = /* GraphQL */ `
       lastOnlineAt
       phonenumber
       email
+      posts {
+        nextToken
+        __typename
+      }
+      followers {
+        nextToken
+        __typename
+      }
+      following {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -181,6 +206,7 @@ export const onUpdateUser = /* GraphQL */ `
       id
       name
       imageUri
+      backgroundImageUri
       status
       Messages {
         nextToken
@@ -193,6 +219,18 @@ export const onUpdateUser = /* GraphQL */ `
       lastOnlineAt
       phonenumber
       email
+      posts {
+        nextToken
+        __typename
+      }
+      followers {
+        nextToken
+        __typename
+      }
+      following {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -205,6 +243,7 @@ export const onDeleteUser = /* GraphQL */ `
       id
       name
       imageUri
+      backgroundImageUri
       status
       Messages {
         nextToken
@@ -217,6 +256,327 @@ export const onDeleteUser = /* GraphQL */ `
       lastOnlineAt
       phonenumber
       email
+      posts {
+        nextToken
+        __typename
+      }
+      followers {
+        nextToken
+        __typename
+      }
+      following {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreatePost = /* GraphQL */ `
+  subscription OnCreatePost($filter: ModelSubscriptionPostFilterInput) {
+    onCreatePost(filter: $filter) {
+      id
+      userID
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      content
+      discription
+      media
+      type
+      likes {
+        nextToken
+        __typename
+      }
+      loves {
+        nextToken
+        __typename
+      }
+      comments {
+        nextToken
+        __typename
+      }
+      shares
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdatePost = /* GraphQL */ `
+  subscription OnUpdatePost($filter: ModelSubscriptionPostFilterInput) {
+    onUpdatePost(filter: $filter) {
+      id
+      userID
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      content
+      discription
+      media
+      type
+      likes {
+        nextToken
+        __typename
+      }
+      loves {
+        nextToken
+        __typename
+      }
+      comments {
+        nextToken
+        __typename
+      }
+      shares
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeletePost = /* GraphQL */ `
+  subscription OnDeletePost($filter: ModelSubscriptionPostFilterInput) {
+    onDeletePost(filter: $filter) {
+      id
+      userID
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      content
+      discription
+      media
+      type
+      likes {
+        nextToken
+        __typename
+      }
+      loves {
+        nextToken
+        __typename
+      }
+      comments {
+        nextToken
+        __typename
+      }
+      shares
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateLike = /* GraphQL */ `
+  subscription OnCreateLike($filter: ModelSubscriptionLikeFilterInput) {
+    onCreateLike(filter: $filter) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateLike = /* GraphQL */ `
+  subscription OnUpdateLike($filter: ModelSubscriptionLikeFilterInput) {
+    onUpdateLike(filter: $filter) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteLike = /* GraphQL */ `
+  subscription OnDeleteLike($filter: ModelSubscriptionLikeFilterInput) {
+    onDeleteLike(filter: $filter) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateLove = /* GraphQL */ `
+  subscription OnCreateLove($filter: ModelSubscriptionLoveFilterInput) {
+    onCreateLove(filter: $filter) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateLove = /* GraphQL */ `
+  subscription OnUpdateLove($filter: ModelSubscriptionLoveFilterInput) {
+    onUpdateLove(filter: $filter) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteLove = /* GraphQL */ `
+  subscription OnDeleteLove($filter: ModelSubscriptionLoveFilterInput) {
+    onDeleteLove(filter: $filter) {
+      id
+      postID
+      userID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateComment = /* GraphQL */ `
+  subscription OnCreateComment($filter: ModelSubscriptionCommentFilterInput) {
+    onCreateComment(filter: $filter) {
+      id
+      postID
+      userID
+      content
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateComment = /* GraphQL */ `
+  subscription OnUpdateComment($filter: ModelSubscriptionCommentFilterInput) {
+    onUpdateComment(filter: $filter) {
+      id
+      postID
+      userID
+      content
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteComment = /* GraphQL */ `
+  subscription OnDeleteComment($filter: ModelSubscriptionCommentFilterInput) {
+    onDeleteComment(filter: $filter) {
+      id
+      postID
+      userID
+      content
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateFollow = /* GraphQL */ `
+  subscription OnCreateFollow($filter: ModelSubscriptionFollowFilterInput) {
+    onCreateFollow(filter: $filter) {
+      id
+      followerID
+      followingID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateFollow = /* GraphQL */ `
+  subscription OnUpdateFollow($filter: ModelSubscriptionFollowFilterInput) {
+    onUpdateFollow(filter: $filter) {
+      id
+      followerID
+      followingID
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteFollow = /* GraphQL */ `
+  subscription OnDeleteFollow($filter: ModelSubscriptionFollowFilterInput) {
+    onDeleteFollow(filter: $filter) {
+      id
+      followerID
+      followingID
       createdAt
       updatedAt
       __typename
@@ -243,6 +603,7 @@ export const onCreateChatRoomUser = /* GraphQL */ `
         id
         name
         imageUri
+        backgroundImageUri
         status
         lastOnlineAt
         phonenumber
@@ -277,6 +638,7 @@ export const onUpdateChatRoomUser = /* GraphQL */ `
         id
         name
         imageUri
+        backgroundImageUri
         status
         lastOnlineAt
         phonenumber
@@ -311,6 +673,7 @@ export const onDeleteChatRoomUser = /* GraphQL */ `
         id
         name
         imageUri
+        backgroundImageUri
         status
         lastOnlineAt
         phonenumber

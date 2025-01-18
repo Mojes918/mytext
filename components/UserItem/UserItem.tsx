@@ -118,9 +118,6 @@ return(
           </Pressable>
           <View style={{ flex: 1, paddingHorizontal: 6 }}>
             <Text style={{ fontWeight: 'medium', fontSize: 18, color: textColor }}>{user.name}</Text>
-            <Text style={{ fontWeight: '100', fontSize: 12, color: textColor }}>
-              Hey, welcome to MyChat! Say HI 👋
-            </Text>
           </View>
         </View>
       </View>

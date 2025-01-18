@@ -15,29 +15,34 @@ import {
   FlatList,
   Keyboard,
   Dimensions,
-  Animated
+  Animated,
+  ImageBackground
 
 } from 'react-native';
 import Entypo from '@expo/vector-icons/Entypo';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import Ionicons from '@expo/vector-icons/Ionicons';
+
 import { API, Auth, Storage } from 'aws-amplify';
 import * as mutations from '../../src/graphql/mutations';
 import EmojiSelector from 'react-native-emoji-selector';
 import * as ImagePicker from 'expo-image-picker';
-import { AntDesign, MaterialIcons } from '@expo/vector-icons';
+import { AntDesign } from '@expo/vector-icons';
 import uuid from 'react-native-uuid';
 import {Audio, AVPlaybackStatus}from"expo-av";
-//import EmojiPicker from 'rn-emoji-keyboard'; 
+
 import AudioPlayer from '../AudioPlayer/AudioPlayer';
-import Modal from 'react-native-modal';
+import { S3Image } from 'aws-amplify-react-native';
+import Message from './Message';
+import menuOptions from "../menuOptions"
+import { listChatRoomUsers } from '@/src/graphql/queries';
+import { listChatRoomUsersWithDetails } from '@/src/CustomQuery';
 
 
 
 
 
-const MessageInput = ({ chatRoom }) => {
+const MessageInput = ({ chatRoom,messageReply,removeMessageReply,authUserId,user }) => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
@@ -51,8 +56,13 @@ const MessageInput = ({ chatRoom }) => {
   const [audioProgress,setAudioProgress]=useState(0);
   const [audioDuration,setAudioDuration]=useState(0);
   const [soundUri,setSoundUri]=useState<string|null>(null);
-  //const [waveform, setWaveform] = useState<number[]>([]);
+ 
+  const senderName =
+  messageReply?.userID === authUserId ? "You" :user?.name;
+console.log(messageReply?.image)
 
+
+  
 
   const resetField = () => {
     setMessage('');
@@ -60,7 +70,8 @@ const MessageInput = ({ chatRoom }) => {
     setImage(null);
     setProgress(0);
     setSound(null);
-    setSoundUri(null)
+    setSoundUri(null);
+    removeMessageReply();
   };
 
   useEffect(() => {
@@ -89,52 +100,90 @@ const MessageInput = ({ chatRoom }) => {
     }
   };
 
-  const takePhoto = async () => {
-    let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
-  };
-
   const sendMessage = async () => {
     setLoading(true);
+  
     try {
       const user = await Auth.currentAuthenticatedUser();
-      const newMessage = await API.graphql({
+      const userId = user.attributes.sub;
+  
+      // Create a new message
+      const newMessageResponse = await API.graphql({
         query: mutations.createMessage,
         variables: {
           input: {
             content: message,
-            userID: user.attributes.sub,
-            chatroomID: chatRoom.id,
+            userID: userId,
+            chatroomID: chatRoom?.id,
+            status: "SENT",
+            replyToMessageId: messageReply?.id,
           },
         },
       });
-
-      await API.graphql({
+  
+      const newMessage = newMessageResponse.data.createMessage;
+  
+      // Update chat room with the new last message
+      const chatRoomUpdateResponse = await API.graphql({
         query: mutations.updateChatRoom,
         variables: {
           input: {
-            id: chatRoom.id,
-            chatRoomLastMessageId: newMessage.data.createMessage.id,
+            id: chatRoom?.id,
+            chatRoomLastMessageId: newMessage.id,
           },
         },
       });
-
+  
+      const updatedChatRoom = chatRoomUpdateResponse.data.updateChatRoom;
+  
+      // Increment unseen messages for other users in the chat room
+      if (updatedChatRoom) {
+        const chatRoomUsersResponse = await API.graphql({
+          query: listChatRoomUsers,
+          variables: {
+            filter: { chatRoomId: { eq: chatRoom.id } },
+          },
+        });
+  
+        const chatRoomUsers = chatRoomUsersResponse.data.listChatRoomUsers.items;
+  
+        for (const user of chatRoomUsers) {
+          if (user.userId !== userId) {
+            await API.graphql({
+              query: mutations.updateChatRoom,
+              variables: {
+                input: {
+                  id: chatRoom?.id,
+                  newMessages: (updatedChatRoom.newMessages || 0) + 1,
+                },
+              },
+            });
+          }
+        }
+      }
+  
+      // Mark the message as delivered
+      await API.graphql({
+        query: mutations.updateMessage,
+        variables: {
+          input: {
+            id: newMessage.id,
+            status: "DELIVERED",
+          },
+        },
+      });
+  
       resetField();
     } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send the message.');
+      console.error("Error sending message:", error);
+      Alert.alert("Error", "Failed to send the message.");
     } finally {
       setLoading(false);
     }
   };
+  
+  
+ 
 
   const sendImage = async () => {
     if (!image) return;
@@ -162,6 +211,8 @@ const MessageInput = ({ chatRoom }) => {
             image: key,
             userID: user.attributes.sub,
             chatroomID: chatRoom.id,
+            status:"SENT",
+            replyToMessageId:messageReply?.id
           },
         },
       });
@@ -176,6 +227,16 @@ const MessageInput = ({ chatRoom }) => {
         },
       });
 
+      await API.graphql({
+        query: mutations.updateMessage,
+        variables: {
+          input: {
+            id: newMessage.data.createMessage.id,
+            status: "DELIVERED",
+          },
+        },
+      });
+
       resetField();
     } catch (error) {
       console.error('Error sending image:', error);
@@ -184,6 +245,11 @@ const MessageInput = ({ chatRoom }) => {
       setLoading(false);
     }
   };
+
+
+
+
+  
 
   const getBlob = async (uri:string) => {
     try {
@@ -211,7 +277,7 @@ const MessageInput = ({ chatRoom }) => {
     setIsEmojiOpen((prev) => !prev);
   }, []);
 
-  const inputBackgroundColor = isDarkMode ? '#333' : 'lightgray';
+  const inputBackgroundColor = isDarkMode ? '#1d1d1d' : '#ddd';
   const iconColor = isDarkMode ? '#fff' : '#000';
   const iconbackgroundColor=isDarkMode?"#333":"lightgray";
 
@@ -302,6 +368,8 @@ const sendAudio = async () => {
           audio: key,
           userID: user.attributes.sub,
           chatroomID: chatRoom.id,
+          status:"SENT",
+          replyToMessageId:messageReply?.id
         },
       },
     });
@@ -315,6 +383,17 @@ const sendAudio = async () => {
         },
       },
     });
+
+    await API.graphql({
+      query: mutations.updateMessage,
+      variables: {
+        input: {
+          id: newMessage.data.createMessage.id,
+          status: "DELIVERED",
+        },
+      },
+    });
+
 
     resetField();
   } catch (error) {
@@ -379,16 +458,7 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     }
   };
 
-  const menuOptions = [
-    { id: 1, name: 'Document', icon: 'file-document-outline' },
-    { id: 2, name: 'Camera', icon: 'camera-outline' },
-    { id: 3, name: 'Gallery', icon: 'image-outline' },
-    { id: 4, name: 'Audio', icon: 'microphone-outline' },
-    { id: 5, name: 'Location', icon: 'map-marker-outline' },
-    { id: 6, name: 'Payment', icon: 'currency-inr' },
-    { id: 7, name: 'Contact', icon: 'account-outline' },
-    { id: 8, name: 'Poll', icon: 'poll' },
-  ];
+  
   const onfocuspress=()=>{
     setMenuVisible(false); // Hide menu when input is focused
     Animated.timing(menuHeight, {
@@ -405,6 +475,43 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false);
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={80}
     >
+       {messageReply && (
+      <View style={[styles.replyContainer, { backgroundColor: iconbackgroundColor }]}>
+        {/* Colored Bar */}
+        <View style={styles.replyBar} />
+
+        {/* Reply Content */}
+        <View style={styles.replyContent}>
+          <Text style={styles.replyTitle}>Replying to: {senderName}</Text>
+        
+          {/* Render Content */}
+          {messageReply.content && (
+            <Text style={[styles.replyMessage, { color: iconColor }]} numberOfLines={1}>
+              {messageReply.content}
+            </Text>
+          )}
+          {messageReply.audio && (
+            <Text style={[styles.replyMessage, { color: iconColor }]} numberOfLines={1}>
+              🎤 Voice message ({messageReply.audioDuration || "0:00"})
+            </Text>
+          )}
+          {/* Render Image */}
+          {messageReply.image && (
+            <S3Image
+                      imgKey={messageReply.image}
+                      style={styles.replyImage}
+                      resizeMode="cover"
+                    />
+          )}
+        </View>
+
+        {/* Close Button */}
+        <TouchableOpacity onPress={resetField}>
+          <AntDesign name="closecircleo" size={24} color="#808080" />
+        </TouchableOpacity>
+        </View>
+       )}
+          
       {image && (
         <View style={styles.sendImageContainer}>
           <Image source={{ uri: image }} style={{ height: 110, width: 110, borderRadius: 10 }} />
@@ -412,7 +519,7 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false);
           style={{flex:1,justifyContent:"flex-start",alignSelf:"flex-end"}}>
           <View style={{height:5,borderRadius:5,backgroundColor:"#3777f0",width:`${progress*100}%`}}/>
           </View>
-          <AntDesign name="closecircleo" size={24} color="black" onPress={() => setImage(null)} />
+          <AntDesign name="closecircleo" size={24} color={iconColor} onPress={() => setImage(null)} />
         </View>
       )}
 
@@ -593,6 +700,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     color:"gray"
+  },
+  replyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  replyBar: {
+    width: 5,
+    height: '100%',
+    backgroundColor: '#3777f0',
+    borderRadius: 2,
+    marginRight: 10,
+  },
+  replyContent: { flex: 1 },
+  replyTitle: { fontWeight: 'bold', color: '#3777f0' },
+  replyMessage: { color: '#000', marginTop: 2 },
+  replyImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 5,
+    marginTop: 5,
   },
 });
 

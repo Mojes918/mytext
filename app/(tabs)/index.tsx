@@ -10,6 +10,8 @@ import {
   View,
   Animated,
   TextInput,
+  ImageBackground,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AntDesign, Feather, FontAwesome6, Ionicons, MaterialCommunityIcons, MaterialIcons, SimpleLineIcons } from '@expo/vector-icons';
@@ -25,7 +27,7 @@ import SearchBarAnimation from '@/components/search/SearchBarAnimation';
 
 
 
-
+const defaultImage = 'https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg';
 interface ChatRoomUser {
   chatRoomId: string;
   userId: string;
@@ -67,6 +69,11 @@ function HomeScreen() {
   const [type,setType]=useState('first');
   const [isSearchActive, setIsSearchActive] = useState(false);
   const animatedWidth = useRef(new Animated.Value(0)).current;
+  const [selectedImage, setSelectedImage] = useState(null);
+
+
+
+
 
 
   useEffect(() => {
@@ -74,21 +81,21 @@ function HomeScreen() {
       try {
         const userData = await Auth.currentAuthenticatedUser();
         const userId = userData.attributes.sub;
-
+  
         const chatRoomUsersResponse = (await API.graphql({
           query: listChatRoomUsers,
           variables: {
             filter: { userId: { eq: userId } },
             limit: 100,
           },
-        })) as { data: ListChatRoomUsersResponse };
-
+        })) as any;
+  
         const chatRoomsData = chatRoomUsersResponse.data?.listChatRoomUsers.items;
         if (chatRoomsData?.length) {
           const chatRoomIds = chatRoomsData
             .map((chatRoomUser) => chatRoomUser.chatRoomId)
             .filter(Boolean);
-
+  
           const fetchedChatRooms = await Promise.all(
             chatRoomIds.map(async (chatRoomId) => {
               const chatRoomResponse = await API.graphql({
@@ -98,20 +105,38 @@ function HomeScreen() {
               return chatRoomResponse.data?.getChatRoom || null;
             })
           );
-
-          setChatRooms(fetchedChatRooms.filter(Boolean) as ChatRoom[]);
+  
+          const sortedChatRooms = fetchedChatRooms
+          .filter(Boolean)
+          .sort((a, b) => {
+            const aTime = a.LastMessage?.createdAt
+              ? new Date(a.LastMessage.createdAt).getTime()
+              : 0;
+            const bTime = b.LastMessage?.createdAt
+              ? new Date(b.LastMessage.createdAt).getTime()
+              : 0;
+        
+            // Sort by unread messages first, then by timestamp
+            if (a.newMessages !== b.newMessages) {
+              return b.newMessages - a.newMessages;
+            }
+        
+            return bTime - aTime;
+          });
+        
+         // console.log('Fetched ChatRooms (Before Sorting):', fetchedChatRooms);
+          //console.log('Sorted ChatRooms (After Sorting):', sortedChatRooms);
+  
+          setChatRooms([...sortedChatRooms]);
         }
-
-        const authUser = await Auth.currentAuthenticatedUser();
-        const authUserId = authUser.attributes.sub;
-
+  
         const userHeaderDetails: any = await API.graphql({
           query: getUser,
           variables: {
-            id: authUserId,
+            id: userId,
           },
         });
-
+  
         if (userHeaderDetails?.data?.getUser) {
           const userDetails = userHeaderDetails.data.getUser;
           setCurrentUser({
@@ -120,18 +145,18 @@ function HomeScreen() {
             imagepath: userDetails.imageUri || null,
           });
         }
-
       } catch (error) {
         console.error('Error fetching chat rooms or user data:', error);
       }
     };
-
+  
     fetchChatRooms();
   }, []);
-
+  
+     
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: isDarkMode ? '#121212' : '#ffffff',
+      backgroundColor: isDarkMode ? '#111' : '#ffffff',
       flex: 1,
       paddingHorizontal: 5,
       paddingVertical: 10,
@@ -148,20 +173,26 @@ function HomeScreen() {
       borderWidth: 2,
       borderColor: '#565656',
     },
+    fullscreenImage: {
+      width: '90%',
+      height: '90%',
+      resizeMode: 'contain',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    },
+    modalBackground: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    },
   });
 
-
+  const textColor= isDarkMode ? 'white' : 'black'
   
   const iconColor = isDarkMode ? '#ffffff' : '#000000';
   const ProfileRoute = () => router.push('/(tabs)/settings');
   
-  const LogOut = async () => {
-    try {
-      await Auth.signOut();
-    } catch (error) {
-      alert('Error signing out. Please try again.');
-    }
-  };
+  
 
     
   const toggleSearch = () => {
@@ -200,7 +231,7 @@ function HomeScreen() {
           
             <TouchableOpacity onPress={ProfileRoute}>
               <Image
-                source={currentUser?.imagepath ? { uri: currentUser.imagepath } : require('../../assets/images/default-user.png')}
+                source={currentUser?.imagepath ? { uri: currentUser.imagepath } : { uri: defaultImage }}
                 style={dynamicStyles.image}
               />
             </TouchableOpacity>
@@ -228,18 +259,38 @@ function HomeScreen() {
         )}
         </View>
 
+
+        {/* Fullscreen Modal for Enlarged Profile Picture */}
+        {selectedImage && (
+          <Modal visible={true} transparent={true} animationType="fade">
+            <TouchableOpacity
+              style={dynamicStyles.modalBackground}
+              onPress={() => setSelectedImage(null)}
+            >
+              <Image source={{ uri: selectedImage }} style={dynamicStyles.fullscreenImage} />
+            </TouchableOpacity>
+          </Modal>
+        )}
+
         {/* FlatList */}
         <FlatList
-          data={chatRooms}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => item ? <ChatListItem chatRoom={item} /> : null}
-          ListHeaderComponent={() => (
-            <Text style={[dynamicStyles.headerText, { paddingHorizontal: 15 }]} onPress={LogOut}>
-              Messages
-            </Text>
-          )}
-          ListEmptyComponent={<Text style={dynamicStyles.headerText}>No Chat Rooms Available</Text>}
-        />
+  data={chatRooms}
+  keyExtractor={(item) => item.id}
+  renderItem={({ item }) => item ? <ChatListItem chatRoom={item} /> : null}
+  ListHeaderComponent={() => (
+    <>
+    <Text style={[dynamicStyles.headerText, { paddingHorizontal: 15, marginTop: 10 }]}>
+      Messages
+    </Text></>
+  )}
+  ListEmptyComponent={
+    <View style={{ alignItems: "center", justifyContent: "center", marginVertical: 20 }}>
+      <Text style={{ fontSize: 16, color: textColor }}>No chats yet.</Text>
+      <Text style={{ fontSize: 16, color: textColor }}>Get Started by messaging a friend.</Text>
+    </View>
+  }
+/>
+
       </View>
 
       {/* Floating Action Button at the Top */}

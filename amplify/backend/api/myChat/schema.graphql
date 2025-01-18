@@ -3,19 +3,26 @@ enum MessageStatus {
   DELIVERED
   READ
 }
+enum PostType {
+  TEXT
+  IMAGE
+  VIDEO
+}
 
-type Message @model @auth(rules: [{allow: public}]) {
+type Message @model @auth(rules: [{ allow: public }]) {
   id: ID!
   content: String
   image: String
   audio: String
-  userID: ID! @index(name: "byUser")
-  chatroomID: ID! @index(name: "byChatRoom")
+  userID: ID @index(name: "byUser")
+  chatroomID: ID @index(name: "byChatRoom")
   status: MessageStatus
   replyToMessageId: ID
+  scheduledTime: AWSTimestamp
+  isScheduled: Boolean # No @default directive
 }
 
-type ChatRoom @model @auth(rules: [{allow: public}]) {
+type ChatRoom @model @auth(rules: [{ allow: public }]) {
   id: ID!
   newMessages: Int
   LastMessage: Message @hasOne
@@ -23,14 +30,57 @@ type ChatRoom @model @auth(rules: [{allow: public}]) {
   ChatRoomUsers: [User] @manyToMany(relationName: "ChatRoomUser")
 }
 
-type User @model @auth(rules: [{allow: public}]) {
+type User @model @auth(rules: [{ allow: public }]) {
   id: ID!
   name: String!
   imageUri: String
+  backgroundImageUri: String
   status: String
   Messages: [Message] @hasMany(indexName: "byUser", fields: ["id"])
   chatrooms: [ChatRoom] @manyToMany(relationName: "ChatRoomUser")
   lastOnlineAt: AWSTimestamp
   phonenumber: String
   email: String
+  posts: [Post] @hasMany(indexName: "byUser", fields: ["id"])
+  followers: [Follow] @hasMany(indexName: "byFollowing", fields: ["id"])
+  following: [Follow] @hasMany(indexName: "byFollower", fields: ["id"])
+}
+
+type Post @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  userID: ID! @index(name: "byUser") # References the User who created the post
+  user: User @hasOne(fields: ["userID"]) # Add this relationship
+  content: String # Post text content
+  discription: String # Post text content
+  media: String # URL of an image/video if included
+  type: PostType # Type of post (e.g., text, image, video)
+  likes: [Like] @hasMany(indexName: "byPost", fields: ["id"])
+  loves: [Love] @hasMany(indexName: "byPost", fields: ["id"])
+  comments: [Comment] @hasMany(indexName: "byPost", fields: ["id"])
+  shares: Int # Number of times this post was shared
+}
+type Like @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  postID: ID! @index(name: "byPost") # References the Post being liked
+  userID: ID! @index(name: "byUser") # References the User who liked the post
+  
+}
+type Love @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  postID: ID! @index(name: "byPost") # References the Post being liked
+  userID: ID! @index(name: "byUser") # References the User who liked the post
+  
+}
+type Comment @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  postID: ID! @index(name: "byPost") # References the Post being commented on
+  userID: ID! @index(name: "byUser") # References the User who commented
+  content: String # Comment text content
+  user: User @hasOne(fields: ["userID"]) # Link to the user who commented
+}
+type Follow @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  followerID: ID! @index(name: "byFollower") # User ID of the follower
+  followingID: ID! @index(name: "byFollowing") # User ID of the person being followed
+  
 }
