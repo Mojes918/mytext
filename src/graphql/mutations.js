@@ -1,6 +1,60 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const createRandomChatQueue = /* GraphQL */ `
+  mutation CreateRandomChatQueue(
+    $input: CreateRandomChatQueueInput!
+    $condition: ModelRandomChatQueueConditionInput
+  ) {
+    createRandomChatQueue(input: $input, condition: $condition) {
+      id
+      userID
+      status
+      tempName
+      tempImageUri
+      chatRoomId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateRandomChatQueue = /* GraphQL */ `
+  mutation UpdateRandomChatQueue(
+    $input: UpdateRandomChatQueueInput!
+    $condition: ModelRandomChatQueueConditionInput
+  ) {
+    updateRandomChatQueue(input: $input, condition: $condition) {
+      id
+      userID
+      status
+      tempName
+      tempImageUri
+      chatRoomId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteRandomChatQueue = /* GraphQL */ `
+  mutation DeleteRandomChatQueue(
+    $input: DeleteRandomChatQueueInput!
+    $condition: ModelRandomChatQueueConditionInput
+  ) {
+    deleteRandomChatQueue(input: $input, condition: $condition) {
+      id
+      userID
+      status
+      tempName
+      tempImageUri
+      chatRoomId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const createMessage = /* GraphQL */ `
   mutation CreateMessage(
     $input: CreateMessageInput!
@@ -17,6 +71,7 @@ export const createMessage = /* GraphQL */ `
       replyToMessageId
       scheduledTime
       isScheduled
+      deleted
       createdAt
       updatedAt
       __typename
@@ -39,6 +94,7 @@ export const updateMessage = /* GraphQL */ `
       replyToMessageId
       scheduledTime
       isScheduled
+      deleted
       createdAt
       updatedAt
       __typename
@@ -61,6 +117,61 @@ export const deleteMessage = /* GraphQL */ `
       replyToMessageId
       scheduledTime
       isScheduled
+      deleted
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createRandomMessage = /* GraphQL */ `
+  mutation CreateRandomMessage(
+    $input: CreateRandomMessageInput!
+    $condition: ModelRandomMessageConditionInput
+  ) {
+    createRandomMessage(input: $input, condition: $condition) {
+      id
+      content
+      userID
+      randomChatRoomID
+      status
+      replyToMessageId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateRandomMessage = /* GraphQL */ `
+  mutation UpdateRandomMessage(
+    $input: UpdateRandomMessageInput!
+    $condition: ModelRandomMessageConditionInput
+  ) {
+    updateRandomMessage(input: $input, condition: $condition) {
+      id
+      content
+      userID
+      randomChatRoomID
+      status
+      replyToMessageId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteRandomMessage = /* GraphQL */ `
+  mutation DeleteRandomMessage(
+    $input: DeleteRandomMessageInput!
+    $condition: ModelRandomMessageConditionInput
+  ) {
+    deleteRandomMessage(input: $input, condition: $condition) {
+      id
+      content
+      userID
+      randomChatRoomID
+      status
+      replyToMessageId
       createdAt
       updatedAt
       __typename
@@ -74,7 +185,6 @@ export const createChatRoom = /* GraphQL */ `
   ) {
     createChatRoom(input: $input, condition: $condition) {
       id
-      newMessages
       LastMessage {
         id
         content
@@ -86,15 +196,29 @@ export const createChatRoom = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
       }
+      type
       Messages {
         nextToken
         __typename
       }
+      RandomMessages {
+        nextToken
+        __typename
+      }
       ChatRoomUsers {
+        nextToken
+        __typename
+      }
+      RandomChatRoomUsers {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -112,7 +236,6 @@ export const updateChatRoom = /* GraphQL */ `
   ) {
     updateChatRoom(input: $input, condition: $condition) {
       id
-      newMessages
       LastMessage {
         id
         content
@@ -124,15 +247,29 @@ export const updateChatRoom = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
       }
+      type
       Messages {
         nextToken
         __typename
       }
+      RandomMessages {
+        nextToken
+        __typename
+      }
       ChatRoomUsers {
+        nextToken
+        __typename
+      }
+      RandomChatRoomUsers {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -150,7 +287,6 @@ export const deleteChatRoom = /* GraphQL */ `
   ) {
     deleteChatRoom(input: $input, condition: $condition) {
       id
-      newMessages
       LastMessage {
         id
         content
@@ -162,11 +298,17 @@ export const deleteChatRoom = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
       }
+      type
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
         nextToken
         __typename
       }
@@ -174,9 +316,137 @@ export const deleteChatRoom = /* GraphQL */ `
         nextToken
         __typename
       }
+      RandomChatRoomUsers {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       chatRoomLastMessageId
+      __typename
+    }
+  }
+`;
+export const createUnreadMessages = /* GraphQL */ `
+  mutation CreateUnreadMessages(
+    $input: CreateUnreadMessagesInput!
+    $condition: ModelUnreadMessagesConditionInput
+  ) {
+    createUnreadMessages(input: $input, condition: $condition) {
+      id
+      chatRoomId
+      userId
+      newMessages
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      chatRoomUnreadMessagesId
+      userUnreadMessagesId
+      __typename
+    }
+  }
+`;
+export const updateUnreadMessages = /* GraphQL */ `
+  mutation UpdateUnreadMessages(
+    $input: UpdateUnreadMessagesInput!
+    $condition: ModelUnreadMessagesConditionInput
+  ) {
+    updateUnreadMessages(input: $input, condition: $condition) {
+      id
+      chatRoomId
+      userId
+      newMessages
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      chatRoomUnreadMessagesId
+      userUnreadMessagesId
+      __typename
+    }
+  }
+`;
+export const deleteUnreadMessages = /* GraphQL */ `
+  mutation DeleteUnreadMessages(
+    $input: DeleteUnreadMessagesInput!
+    $condition: ModelUnreadMessagesConditionInput
+  ) {
+    deleteUnreadMessages(input: $input, condition: $condition) {
+      id
+      chatRoomId
+      userId
+      newMessages
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      chatRoomUnreadMessagesId
+      userUnreadMessagesId
       __typename
     }
   }
@@ -192,7 +462,16 @@ export const createUser = /* GraphQL */ `
       imageUri
       backgroundImageUri
       status
+      pushToken
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
+        nextToken
+        __typename
+      }
+      randomChatrooms {
         nextToken
         __typename
       }
@@ -212,6 +491,10 @@ export const createUser = /* GraphQL */ `
         __typename
       }
       following {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -232,7 +515,16 @@ export const updateUser = /* GraphQL */ `
       imageUri
       backgroundImageUri
       status
+      pushToken
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
+        nextToken
+        __typename
+      }
+      randomChatrooms {
         nextToken
         __typename
       }
@@ -252,6 +544,10 @@ export const updateUser = /* GraphQL */ `
         __typename
       }
       following {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -272,7 +568,16 @@ export const deleteUser = /* GraphQL */ `
       imageUri
       backgroundImageUri
       status
+      pushToken
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
+        nextToken
+        __typename
+      }
+      randomChatrooms {
         nextToken
         __typename
       }
@@ -292,6 +597,10 @@ export const deleteUser = /* GraphQL */ `
         __typename
       }
       following {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -315,6 +624,7 @@ export const createPost = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -359,6 +669,7 @@ export const updatePost = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -403,6 +714,7 @@ export const deletePost = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -539,6 +851,7 @@ export const createComment = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -568,6 +881,7 @@ export const updateComment = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -597,6 +911,7 @@ export const deleteComment = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -666,7 +981,7 @@ export const createChatRoomUser = /* GraphQL */ `
       userId
       chatRoom {
         id
-        newMessages
+        type
         createdAt
         updatedAt
         chatRoomLastMessageId
@@ -678,6 +993,7 @@ export const createChatRoomUser = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -702,7 +1018,7 @@ export const updateChatRoomUser = /* GraphQL */ `
       userId
       chatRoom {
         id
-        newMessages
+        type
         createdAt
         updatedAt
         chatRoomLastMessageId
@@ -714,6 +1030,7 @@ export const updateChatRoomUser = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -738,7 +1055,7 @@ export const deleteChatRoomUser = /* GraphQL */ `
       userId
       chatRoom {
         id
-        newMessages
+        type
         createdAt
         updatedAt
         chatRoomLastMessageId
@@ -750,6 +1067,118 @@ export const deleteChatRoomUser = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createRandomChatRoomUser = /* GraphQL */ `
+  mutation CreateRandomChatRoomUser(
+    $input: CreateRandomChatRoomUserInput!
+    $condition: ModelRandomChatRoomUserConditionInput
+  ) {
+    createRandomChatRoomUser(input: $input, condition: $condition) {
+      id
+      chatRoomId
+      userId
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateRandomChatRoomUser = /* GraphQL */ `
+  mutation UpdateRandomChatRoomUser(
+    $input: UpdateRandomChatRoomUserInput!
+    $condition: ModelRandomChatRoomUserConditionInput
+  ) {
+    updateRandomChatRoomUser(input: $input, condition: $condition) {
+      id
+      chatRoomId
+      userId
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteRandomChatRoomUser = /* GraphQL */ `
+  mutation DeleteRandomChatRoomUser(
+    $input: DeleteRandomChatRoomUserInput!
+    $condition: ModelRandomChatRoomUserConditionInput
+  ) {
+    deleteRandomChatRoomUser(input: $input, condition: $condition) {
+      id
+      chatRoomId
+      userId
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
         lastOnlineAt
         phonenumber
         email

@@ -9,34 +9,80 @@ enum PostType {
   VIDEO
 }
 
-type Message @model @auth(rules: [{ allow: public }]) {
+enum ChatRoomType {
+  PRIVATE
+  RANDOM
+}
+
+enum RandomChatStatus {
+  WAITING
+  MATCHED
+  SKIPPED
+}
+
+type RandomChatQueue @model @auth(rules: [{ allow: private }]) {
+  id: ID!
+  userID: ID! @index(name: "byUser")
+  status: RandomChatStatus!
+  tempName: String  # Temporary name, if the user sets one
+  tempImageUri: String  # Temporary image, if the user uploads one
+  chatRoomId: ID @index(name: "byChatRoom") 
+}
+
+type Message @model @auth(rules: [{ allow: private }]) {
   id: ID!
   content: String
   image: String
   audio: String
-  userID: ID @index(name: "byUser")
-  chatroomID: ID @index(name: "byChatRoom")
+  userID: ID! @index(name: "byUser")
+  chatroomID: ID! @index(name: "byChatRoom")
   status: MessageStatus
   replyToMessageId: ID
   scheduledTime: AWSTimestamp
-  isScheduled: Boolean # No @default directive
+  isScheduled: Boolean
+  deleted: Boolean
 }
 
-type ChatRoom @model @auth(rules: [{ allow: public }]) {
+type RandomMessage @model @auth(rules: [{ allow: private }]) {
   id: ID!
-  newMessages: Int
-  LastMessage: Message @hasOne
-  Messages: [Message] @hasMany(indexName: "byChatRoom", fields: ["id"])
-  ChatRoomUsers: [User] @manyToMany(relationName: "ChatRoomUser")
+  content: String
+  userID: ID! @index(name: "byUser")
+  randomChatRoomID: ID! @index(name: "byRandomChatRoom")
+  status: MessageStatus
+  replyToMessageId: ID
 }
 
-type User @model @auth(rules: [{ allow: public }]) {
+
+type ChatRoom @model @auth(rules: [{ allow: private }]) {
+  id: ID!
+  LastMessage: Message @hasOne
+  type: ChatRoomType  # PRIVATE or RANDOM
+  Messages: [Message] @hasMany(indexName: "byChatRoom", fields: ["id"])
+  RandomMessages: [RandomMessage] @hasMany(indexName: "byRandomChatRoom", fields: ["id"])
+  ChatRoomUsers: [User] @manyToMany(relationName: "ChatRoomUser")
+  RandomChatRoomUsers: [User] @manyToMany(relationName: "RandomChatRoomUser")  # For RANDOM chats only
+  UnreadMessages: [UnreadMessages] @hasMany
+}
+
+type UnreadMessages @model @auth(rules: [{ allow: private }]) {
+  id: ID!
+  chatRoomId: ID! @index(name: "byChatRoom")
+  userId: ID! @index(name: "byUser")
+  newMessages: Int
+  chatRoom: ChatRoom @belongsTo(fields: ["chatRoomId"])
+  user: User @belongsTo(fields: ["userId"])
+}
+
+type User @model @auth(rules: [{ allow: private }]) {
   id: ID!
   name: String!
   imageUri: String
   backgroundImageUri: String
   status: String
+  pushToken: String  # ✅ Added FCM push token field
   Messages: [Message] @hasMany(indexName: "byUser", fields: ["id"])
+  RandomMessages: [RandomMessage] @hasMany(indexName: "byUser", fields: ["id"])
+  randomChatrooms: [ChatRoom] @manyToMany(relationName: "RandomChatRoomUser")  # For RANDOM chats
   chatrooms: [ChatRoom] @manyToMany(relationName: "ChatRoomUser")
   lastOnlineAt: AWSTimestamp
   phonenumber: String
@@ -44,43 +90,45 @@ type User @model @auth(rules: [{ allow: public }]) {
   posts: [Post] @hasMany(indexName: "byUser", fields: ["id"])
   followers: [Follow] @hasMany(indexName: "byFollowing", fields: ["id"])
   following: [Follow] @hasMany(indexName: "byFollower", fields: ["id"])
+  UnreadMessages: [UnreadMessages] @hasMany
 }
 
-type Post @model @auth(rules: [{ allow: public }]) {
+type Post @model @auth(rules: [{ allow: private }]) {
   id: ID!
-  userID: ID! @index(name: "byUser") # References the User who created the post
-  user: User @hasOne(fields: ["userID"]) # Add this relationship
-  content: String # Post text content
-  discription: String # Post text content
-  media: String # URL of an image/video if included
-  type: PostType # Type of post (e.g., text, image, video)
+  userID: ID! @index(name: "byUser")
+  user: User @hasOne(fields: ["userID"])
+  content: String
+  discription: String
+  media: String
+  type: PostType
   likes: [Like] @hasMany(indexName: "byPost", fields: ["id"])
   loves: [Love] @hasMany(indexName: "byPost", fields: ["id"])
   comments: [Comment] @hasMany(indexName: "byPost", fields: ["id"])
-  shares: Int # Number of times this post was shared
+  shares: Int
 }
-type Like @model @auth(rules: [{ allow: public }]) {
+
+type Like @model @auth(rules: [{ allow: private }]) {
   id: ID!
-  postID: ID! @index(name: "byPost") # References the Post being liked
-  userID: ID! @index(name: "byUser") # References the User who liked the post
-  
+  postID: ID! @index(name: "byPost")
+  userID: ID! @index(name: "byUser")
 }
-type Love @model @auth(rules: [{ allow: public }]) {
+
+type Love @model @auth(rules: [{ allow: private }]) {
   id: ID!
-  postID: ID! @index(name: "byPost") # References the Post being liked
-  userID: ID! @index(name: "byUser") # References the User who liked the post
-  
+  postID: ID! @index(name: "byPost")
+  userID: ID! @index(name: "byUser")
 }
-type Comment @model @auth(rules: [{ allow: public }]) {
+
+type Comment @model @auth(rules: [{ allow: private }]) {
   id: ID!
-  postID: ID! @index(name: "byPost") # References the Post being commented on
-  userID: ID! @index(name: "byUser") # References the User who commented
-  content: String # Comment text content
-  user: User @hasOne(fields: ["userID"]) # Link to the user who commented
+  postID: ID! @index(name: "byPost")
+  userID: ID! @index(name: "byUser")
+  content: String
+  user: User @hasOne(fields: ["userID"])
 }
-type Follow @model @auth(rules: [{ allow: public }]) {
+
+type Follow @model @auth(rules: [{ allow: private }]) {
   id: ID!
-  followerID: ID! @index(name: "byFollower") # User ID of the follower
-  followingID: ID! @index(name: "byFollowing") # User ID of the person being followed
-  
+  followerID: ID! @index(name: "byFollower")
+  followingID: ID! @index(name: "byFollowing")
 }

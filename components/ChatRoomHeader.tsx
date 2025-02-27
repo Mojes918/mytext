@@ -4,13 +4,12 @@ import {
   Text, 
   Image, 
   StyleSheet, 
-  Appearance 
+  Appearance, 
+  TouchableOpacity
 } from 'react-native';
-import { Entypo, Feather } from '@expo/vector-icons';
-import { API, Auth, graphqlOperation } from 'aws-amplify';
-import { listChatRoomUsersWithDetails } from '@/src/CustomQuery'; // Adjust your import path
-import * as ImagePicker from 'expo-image-picker';
-import { onUpdateUser } from '@/src/graphql/subscriptions'; // Adjust the import path of the subscription
+import { API, Auth } from 'aws-amplify';
+import { listChatRoomUsersWithDetails } from '@/src/CustomQuery';
+import { useRouter } from 'expo-router';
 
 interface ChatRoomUser {
   id: string;
@@ -28,9 +27,9 @@ interface User {
 }
 
 const ChatRoomHeader = ({ id }: { id: any }) => {
+  //console.log(id);
   const [user, setUser] = useState<User | null>(null);
-  const [image, setImage] = useState<string | null>(null);
-
+const router=useRouter();
   // Detect system color scheme
   const colorScheme = Appearance.getColorScheme();
   const isDarkMode = colorScheme === 'dark';
@@ -105,28 +104,18 @@ const getUserStatus = (lastOnlineAt: number | null): string => {
   return `Last seen on ${formattedDate} at ${formattedTime}`;
 };
 
+const defaultImage = 'https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg';
 
-  const takePhoto = async () => {
-    let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
-  };
 
   return (
-    <View 
+    <TouchableOpacity 
       style={[styles.container, { backgroundColor: isDarkMode ? '#121212' : '#ffffff' }]}
+     
     >
       <View style={styles.userInfoContainer}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <TouchableOpacity style={{ flexDirection: "row", alignItems: "center" }}  onPress={()=>router.push({pathname:"/ProfileScreen",params:{id:user?.id}})}>
           <Image
-            source={{ uri: user?.imageUri || 'https://via.placeholder.com/30' }}
+            source={{ uri: user?.imageUri || defaultImage}}
             style={[styles.userImage, { backgroundColor: isDarkMode ? '#303030' : '#CCCCCC' }]}
           />
           <View>
@@ -141,8 +130,8 @@ const getUserStatus = (lastOnlineAt: number | null): string => {
     {getUserStatus(user?.lastOnlineAt)}
   </Text>}
           </View>
-        </View>
-
+        </TouchableOpacity>
+{/*
         <View style={styles.iconsContainer}>
           <Feather 
             name="camera" 
@@ -157,9 +146,9 @@ const getUserStatus = (lastOnlineAt: number | null): string => {
             color={isDarkMode ? '#fff' : '#333'} 
             style={styles.icon} 
           />
-        </View>
+        </View>*/}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -167,7 +156,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 0,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     gap: 10,
   },

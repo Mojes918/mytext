@@ -49,24 +49,11 @@ const First = (props: Props) => {
     isOpen.value = !isOpen.value;
   };
 
-  // Function to launch the camera and take a photo
-  const takePhoto = async () => {
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri); // Save the captured photo URI
-      console.log("Photo URI:", result.assets[0].uri); // Print the URI to send the image
-      // Here you can implement logic to send the image to the selected chat room
-    }
-  };
+  
+  
 
   const firstIcon = useAnimatedStyle(() => {
-    const scale = interpolate(firstValue.value, [30, 130], [0, 1], Extrapolate.CLAMP);
+    const scale = interpolate(firstValue.value, [0, 30], [0, 1], Extrapolate.CLAMP);
     return {
       bottom: firstValue.value,
       transform: [{ scale: scale }],
@@ -89,31 +76,11 @@ const First = (props: Props) => {
     };
   });
 
-  const plusIcon = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${progress.value * 45}deg` }],
-    };
-  });
-
+  
   const dynamicStyles = getDynamicStyles(isDarkMode);
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      
-      <Animated.View style={[styles.contentContainer, thirdIcon, dynamicStyles.iconBackground]}>
-        
-        <Pressable style={styles.iconContainer} onPress={takePhoto}> 
-          <Feather name="camera" size={24} color={isDarkMode ? '#ffffff' : '#fff'} />
-        </Pressable>
-        
-      </Animated.View>
-
-      
-      <Animated.View style={[styles.contentContainer, secondIcon, dynamicStyles.iconBackground]}>
-        <Pressable style={styles.iconContainer} onPress={() => router.push('/ScheduleMessage')}>
-          <MaterialIcons name="schedule" size={24} color={isDarkMode ? '#ffffff' : '#fff'} />
-        </Pressable>
-      </Animated.View>
 
      
       <Animated.View style={[styles.contentContainer, firstIcon, dynamicStyles.iconBackground]}>
@@ -122,11 +89,7 @@ const First = (props: Props) => {
         </Pressable>
       </Animated.View>
 
-      <Pressable style={[styles.contentContainer]} onPress={handlePress}>
-        <Animated.View style={[styles.iconContainer, plusIcon, dynamicStyles.iconBackground]}>
-          <Feather name="plus" size={24} color={isDarkMode ? '#ffffff' : '#fff'} />
-        </Animated.View>
-      </Pressable>
+      
     </View>
   );
 };
@@ -134,10 +97,10 @@ const First = (props: Props) => {
 const getDynamicStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
-      backgroundColor: isDarkMode ? '#121212' : '#f5f5f5',
+      backgroundColor: isDarkMode ? '#a5c4fa' : '#f5f5f5',
     },
     iconBackground: {
-      backgroundColor: isDarkMode ? '#444' : '#5288FF',
+      backgroundColor: isDarkMode ? '#333' : '#256ffa',
     },
   });
 
@@ -147,13 +110,13 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 30,
     right: 20,
     borderRadius: 20,
   },
   iconContainer: {
-    width: 55,
-    height: 55,
+    width: 60,
+    height: 60,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',

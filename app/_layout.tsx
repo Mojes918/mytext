@@ -1,133 +1,185 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
-import React from 'react';
-import { useColorScheme } from '@/components/useColorScheme'; // Custom hook to fetch the color scheme
-import ChatRoomHeader from '@/components/ChatRoomHeader';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
-import { GestureHandlerRootView} from 'react-native-gesture-handler';
-// Define the Param List
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+//import { useEffect, useState } from "react";
+import { ActivityIndicator, View, StyleSheet, Text} from "react-native";
+import React from "react";
+import { useColorScheme } from "@/components/useColorScheme";
+import ChatRoomHeader from "@/components/ChatRoomHeader";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+//import { ApolloProvider, ApolloClient, NormalizedCacheObject} from "@apollo/client";
+//import setupApolloClient from "@/src/apolloClient";
+import OnlineChatRoomHeader from "@/components/OnlineChatroomHeader";
+import { InAppNotificationProvider } from "@/components/InAppNotification";
+//import { registerForPushNotificationsAsync } from "@/utils/notification";
+//import { API, Auth, graphqlOperation } from "aws-amplify";
+//import { updateUser } from "@/src/graphql/mutations";
+
+
+       
+
+
+// ✅ Define the Param List
 type RootStackParamList = {
-  ChatRoomScreen: { id: string }; // Define the `id` parameter
-  // Add other routes here
+  ChatRoomScreen: { id: string };
 };
 
-// Exporting ErrorBoundary for catching errors in Layout components
-export {
-  ErrorBoundary, // Catch any errors thrown by the Layout component.
-} from 'expo-router';
+// ✅ Exporting ErrorBoundary for catching errors in Layout components
+export { ErrorBoundary } from "expo-router";
 
-// Define unstable settings for navigation
+// ✅ Define unstable settings for navigation
 export const unstable_settings = {
-  initialRouteName: '(tabs)/_layout', // Ensures that reloading on `/modal` keeps a back button present.
+  initialRouteName: "(tabs)",
 };
 
-// Main RootLayout Component
+// ✅ Main RootLayout Component
 function RootLayout() {
+  /*
+  const [client, setClient] = useState<ApolloClient<NormalizedCacheObject> | null>(null);
+  const [apolloError, setApolloError] = useState<Error | null>(null);*/
+  /*
+
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    Roboto: require('../assets/fonts/Roboto-Bold.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     ...FontAwesome.font,
   });
-
+*/
+/*
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    const handlePushNotifications = async () => {
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        try {
+          // ✅ Get authenticated user
+          const user = await Auth.currentAuthenticatedUser();
+          const userId = user?.attributes?.sub;
+  
+          if (!userId) {
+            console.error("❌ No user ID found");
+            return;
+          }
+  
+          // ✅ Save Push Token to Backend using Amplify API
+          const input = { id: userId, pushToken: token };
+          const response = await API.graphql(graphqlOperation(updateUser, { input }));
+  
+          console.log("✅ Push token saved to backend!", response);
+        } catch (err) {
+          console.error("❌ Failed to save push token:", err);
+        }
+      }
+    };
+  
+    handlePushNotifications();
+  }, []);
+*/
 
-  const [isSplashVisible, setIsSplashVisible] = useState(true);
-
+  // ✅ Setup Apollo Client Once on Mount
+  /*
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsSplashVisible(false); // Hide splash screen after 3 seconds
-    }, 3000);
+    const initializeApollo = async () => {
+      try {
+        console.log("🚀 Initializing Apollo Client...");
+        const apolloClient = await setupApolloClient();
+        setClient(apolloClient);
+        console.log("✅ Apollo Client Ready!");
+      } catch (err) {
+        console.error("❌ Error setting up Apollo Client:", err);
+        setApolloError(err as Error);
+      }
+    };
 
-    return () => clearTimeout(timer); // Cleanup the timer
+    initializeApollo();
   }, []);
 
-  if (isSplashVisible || !loaded) {
-    return <SplashScreen />;
+  */
+  
+/*
+  // ✅ Error Handling: Show Fallback UI Instead of Crashing
+  if (error) {
+    return <ErrorScreen message="Font Loading Error. Restart the App." />;
+  }*/
+ /*
+  if (apolloError) {
+    return <ErrorScreen message="Failed to connect to Apollo. Check logs for details." />;
   }
 
-  return <RootLayoutNav />;
+  // ✅ Show loading screen if fonts or Apollo Client is not ready
+  if (!client) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }*/
+
+  return <RootLayoutNav/>;
 }
-
-export default RootLayout;
-
-// RootLayoutNav Component
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-  const [isThemeLoaded, setIsThemeLoaded] = useState(false);
-
-  useEffect(() => {
-    // When the color scheme is determined, we set the theme as loaded
-    setIsThemeLoaded(true);
-  }, [colorScheme]);
-
-  if (!isThemeLoaded) {
-    // Show loading until theme is determined to avoid flickering
-    return <SplashScreen />;
-  }
-
+/*
+// ✅ Fallback Error Screen
+function ErrorScreen({ message }: { message: string }) {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)/index" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)/two" options={{ headerShown: true, headerTitle: 'Stories' }} />
-        <Stack.Screen name="(tabs)/settings" options={{ headerShown: true, headerTitle: 'Settings' }} />
-        
-        {/* Use the Param List for route props */}
-        <Stack.Screen
-          name="ChatRoomScreen"
-          options={({ route }: NativeStackScreenProps<RootStackParamList, 'ChatRoomScreen'>) => ({
-            headerTitle: () => <ChatRoomHeader id={route.params.id} />, // Use the id directly
-           // headerBackVisible:false
-          })}
-        />
-        <Stack.Screen name="SearchProfile" options={{ headerShown: true,headerTitle:"Search" }} />
-        <Stack.Screen name="AddNewPosts" options={{ headerShown: true,headerTitle:"Add Post" }} />
-        <Stack.Screen name="UserSocialProfile" options={{ headerShown: true ,headerTitle:"My Profile"}} />
-        <Stack.Screen name="ProfileScreen" options={{ headerShown: true }} />
-        <Stack.Screen name="EditProfile" options={{ headerShown: true }} />
-        <Stack.Screen name="SelectContact.tsx" options={{ headerShown: true }} />
-        <Stack.Screen name="contactsScreen" options={{ headerShown: true }} />
-        <Stack.Screen name="ScheduleMessage" options={{ headerShown: true }} />
-        <Stack.Screen name="OpenCamera" options={{ headerShown: true }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
-    </GestureHandlerRootView>
-  );
-}
-
-// SplashScreen Component
-const SplashScreen = () => {
-  return (
-    <View style={styles.splashContainer}>
-      <Image
-        source={require('../assets/images/splashLogo.jpeg')}
-        style={styles.logo}
-      />
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorText}>{message}</Text>
     </View>
   );
-};
+}
+*/
+// ✅ RootLayoutNav Component
+function RootLayoutNav() {
+  const colorScheme = useColorScheme();
 
-// Styles
+  return (
+   
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="ChatRoomScreen"
+              options={({ route }) => ({
+                headerTitle: () => <ChatRoomHeader id={route.params?.ChatRoomId} />, // ✅ Fix: Correct param reference
+              })}
+            />
+            <Stack.Screen
+              name="OnlineChatRoom"
+              options={({ route }) => ({
+                headerTitle: () => <OnlineChatRoomHeader userId={route.params?.userId} />,
+              })}
+            />
+            <Stack.Screen name="ImageViewScreen" options={{ headerShown: false }} />
+            <Stack.Screen name="ImagePreviewScreen" options={{ headerShown: false }} />
+            <Stack.Screen name="ProfileScreen" options={{ headerShown: false }} />
+            <Stack.Screen name="EditProfile" options={{ headerShown: true }} />
+            <Stack.Screen name="contactsScreen" options={{ headerShown: true, headerTitle: "My Contacts" }} />
+          </Stack>
+          <InAppNotificationProvider />
+        </ThemeProvider>
+      </GestureHandlerRootView>
+   
+  );
+}
+
+// ✅ Styles
 const styles = StyleSheet.create({
-  splashContainer: {
+  loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#5288FF', // Ensure splash screen has a background color that matches your theme
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
-  logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 20,
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffcccc",
+  },
+  errorText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#cc0000",
   },
 });
+
+export default RootLayout;

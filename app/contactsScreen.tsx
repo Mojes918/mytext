@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,14 +13,17 @@ import {
   useColorScheme,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
-import { API } from 'aws-amplify';
-import { listUsers } from '@/src/graphql/queries';
+import { API, Auth } from 'aws-amplify';
+import { getUser, listUsers } from '@/src/graphql/queries';
 import UserItem from '@/components/UserItem/UserItem'; // Ensure UserItem is adjusted for registered users
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const normalizePhoneNumber = (number) => {
   if (!number) return '';
-  return number.replace(/[^0-9]/g, '').slice(-10); // Keep only the last 10 digits
+  const digits = number.replace(/[^0-9]/g, '');
+  return digits.length >= 10 ? digits.slice(-10) : digits;
 };
+
 
 const defaultImage = 'https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg'; // Default image for unregistered users
 
@@ -40,10 +41,73 @@ const ContactSearchScreen = () => {
   const inputBorderColor = isDarkMode ? '#3c3c3c' : 'gray';
 
   useEffect(() => {
-    fetchContactsAndUsers();
+    loadCachedContacts(); // Load cached contacts first
+    fetchContactsAndUsers(); // Then fetch new data
   }, []);
+
+  const loadCachedContacts = async () => {
+    
+    try {
+      const cachedData = await AsyncStorage.getItem('cached_contacts');
+      if (cachedData) {
+        setContacts(JSON.parse(cachedData));
+        setFilteredContacts(JSON.parse(cachedData));
+      }
+    } catch (error) {
+      console.error('Error loading cached contacts:', error);
+    }
+  };
+
+
   const fetchContactsAndUsers = async () => {
     try {
+      const authUser = await Auth.currentAuthenticatedUser();
+      const currentUserId = authUser?.attributes?.sub;
+  
+      let currentUserPhoneNumber;
+  
+      // Try to load cached user data first
+      const cachedUser = await AsyncStorage.getItem('cached_user');
+      if (cachedUser) {
+        const parsedUser = JSON.parse(cachedUser);
+        currentUserPhoneNumber = normalizePhoneNumber(parsedUser.phonenumber);
+      }
+  
+      // Fetch user data only if it's not cached
+      if (!currentUserPhoneNumber) {
+        try {
+          const userResponse = await API.graphql({
+            query: getUser,
+            variables: { id: currentUserId },
+          });
+  
+          const fetchedUser = userResponse.data.getUser;
+          if (fetchedUser?.phonenumber) {
+            currentUserPhoneNumber = normalizePhoneNumber(fetchedUser.phonenumber);
+            await AsyncStorage.setItem('cached_user', JSON.stringify(fetchedUser)); // Cache the user data
+          }
+        } catch (error) {
+          console.error("Error fetching current user:", error);
+        }
+      }
+  
+      if (!currentUserPhoneNumber) {
+        console.error("User phone number missing, using empty value.");
+        return;
+      }
+  
+      // Fetch all users from the database
+      const userResponse = await API.graphql({ query: listUsers });
+      const dbUsers = userResponse.data.listUsers.items||[];
+  
+      // Filter out current user from the user list
+      const dbUsersByPhone = new Map(
+        dbUsers
+          .filter(user => normalizePhoneNumber(user.phonenumber) !== currentUserPhoneNumber) // Exclude current user
+          .map(user => [normalizePhoneNumber(user.phonenumber), user])
+      );
+  
+      // Fetch phone contacts
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
         alert('Permission to access contacts was denied.');
@@ -62,21 +126,14 @@ const ContactSearchScreen = () => {
           normalizePhoneNumber(contact.phoneNumbers[0].number)
       );
   
-      const userResponse = await API.graphql({ query: listUsers });
-      const dbUsers = userResponse.data.listUsers.items;
-  
-      const dbUsersByPhone = new Map(
-        dbUsers.map((user) => [normalizePhoneNumber(user.phonenumber), user])
-      );
-  
       const registered = [];
       const unregistered = [];
-      const seenPhoneNumbers = new Set(); // Track already processed phone numbers to avoid duplicates
+      const seenPhoneNumbers = new Set();
   
       validContacts.forEach((contact) => {
         const phoneNumber = normalizePhoneNumber(contact.phoneNumbers[0]?.number);
         if (phoneNumber && !seenPhoneNumbers.has(phoneNumber)) {
-          seenPhoneNumbers.add(phoneNumber); // Mark this phone number as processed
+          seenPhoneNumbers.add(phoneNumber);
   
           if (dbUsersByPhone.has(phoneNumber)) {
             const user = dbUsersByPhone.get(phoneNumber);
@@ -89,61 +146,62 @@ const ContactSearchScreen = () => {
             unregistered.push({
               ...contact,
               isRegistered: false,
-              imageUri: defaultImage, // Assign default image for unregistered contacts
+              imageUri: defaultImage,
             });
           }
         }
       });
   
-      // Sort both registered and unregistered contacts by name
       registered.sort((a, b) => a.name.localeCompare(b.name));
       unregistered.sort((a, b) => a.name.localeCompare(b.name));
   
-      setContacts([
+      const finalContacts = [
         { title: 'Contact', data: registered },
         { title: 'Invite', data: unregistered },
-      ]);
-      setFilteredContacts([
-        { title: 'Contact', data: registered },
-        { title: 'Invite', data: unregistered },
-      ]);
+      ];
+  
+      setContacts(finalContacts);
+      setFilteredContacts(finalContacts);
+  
+      try {
+        await AsyncStorage.setItem('cached_contacts', JSON.stringify(finalContacts));
+      } catch (error) {
+        console.error("Failed to cache contacts:", error);
+      }
+      
     } catch (err) {
-      console.error('Error fetching contacts or users:', err);
+      //console.error('Error fetching contacts or users:', err);
     } finally {
       setLoading(false);
     }
   };
-    const handleSearch = (query) => {
-    setSearchQuery(query);
   
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+
     if (!query) {
-      setFilteredContacts(contacts); // Reset to all contacts when query is empty
+      setFilteredContacts(contacts);
       return;
     }
-  
+
     const filtered = contacts.map((section) => ({
       title: section.title,
       data: section.data.filter(
         (item) =>
-          item.name?.toLowerCase().includes(query.toLowerCase()) ||
+          (item.name?.toLowerCase().includes(query.toLowerCase())) || 
           normalizePhoneNumber(item.phoneNumbers[0]?.number).includes(query.replace(/\D/g, ''))
       ),
     }));
-  
-    // Check if the filtered sections are empty, meaning no results were found
+
     const noResultsFound = filtered.every((section) => section.data.length === 0);
-  
+
     if (noResultsFound) {
-      // If no results were found, display a "No user found" message
-      setFilteredContacts([{ title: 'No results', data: [{ name: 'No user found for this number' }] }]);
+      setFilteredContacts([{ title: 'No results', data: [{ name: 'No user found for this query' }] }]);
     } else {
-      // Otherwise, update with the filtered contacts
       setFilteredContacts(filtered);
     }
   };
-  
 
-  // Function to send SMS invite to unregistered contacts
   const sendInviteSMS = (phoneNumber) => {
     const inviteMessage = `Hello! Join us on MyText. Download the app and connect with me.`;
     const phoneUrl = `sms:${phoneNumber}?body=${encodeURIComponent(inviteMessage)}`;
@@ -151,42 +209,32 @@ const ContactSearchScreen = () => {
     Linking.openURL(phoneUrl).catch((err) => console.error('Failed to send SMS', err));
   };
 
+  
+  
+
+  
   const renderItem = ({ item }) => {
     if (item.name === 'No user found for this number') {
       return (
-        <View style={[styles.contactItem, { backgroundColor: backgroundColor }]}>
+        <View style={[styles.contactItem, { backgroundColor }]}>
           <Text style={[styles.contactName, { color: textColor }]}>{item.name}</Text>
         </View>
       );
     }
-    // If the contact is registered, show using the UserItem component
+    //console.log(item);
     if (item.isRegistered) {
-      return (
-        <UserItem
-          user={item}
-          isRegistered={item.isRegistered}
-          onPress={() =>
-            console.log(`Open chatroom with: ${item.name}`)
-          }
-        />
-      );
+      return <UserItem user={item} isRegistered onPress={() => console.log(`Open chatroom with: ${item.name}`)} />;
     }
 
-    // For unregistered users, show default image, phone number, and "Invite" button
     return (
-      <View style={[styles.contactItem,{backgroundColor:backgroundColor}]}>
-        <Image
-          source={{ uri: item.imageUri || defaultImage }}
-          style={styles.contactImage}
-        />
+      <View style={[styles.contactItem, { backgroundColor }]}>
+        <Image source={{ uri: item.imageUri || defaultImage }} style={styles.contactImage} />
         <Text style={[styles.contactName, { color: textColor }]}>
-          {item.name || item.phoneNumbers[0]?.number}
-        </Text>
-        <TouchableOpacity
-          style={styles.inviteButton}
-          onPress={() => sendInviteSMS(item.phoneNumbers[0]?.number)}
-        >
-          <Text style={[styles.inviteText, { color:"#007bff" }]}>Invite</Text>
+  {item.name || item.phoneNumbers?.[0]?.number || 'Unknown'}
+</Text>
+
+        <TouchableOpacity style={styles.inviteButton} onPress={() => sendInviteSMS(item.phoneNumbers[0]?.number)}>
+          <Text style={[styles.inviteText, { color: "#007bff" }]}>Invite</Text>
         </TouchableOpacity>
       </View>
     );
@@ -206,10 +254,8 @@ const ContactSearchScreen = () => {
     );
   }
 
-  // Only display the Invite section if there are unregistered contacts
   const filteredSections = filteredContacts.filter(
-    (section) =>
-      section.title === 'Contact' || (section.title === 'Invite' && section.data.length > 0)
+    (section) => section.title === 'Contact' || (section.title === 'Invite' && section.data.length > 0)
   );
 
   return (
@@ -220,7 +266,8 @@ const ContactSearchScreen = () => {
     { backgroundColor: inputBackgroundColor, borderColor: inputBorderColor, color: textColor }, // Text color added here
   ]}
   placeholder="Search contacts..."
-  placeholderTextColor={isDarkMode ? '#fff' : '#555'}
+  placeholderTextColor={isDarkMode ? '#bbb' : '#555'}
+
   value={searchQuery}
   onChangeText={handleSearch}
   keyboardType="phone-pad"
@@ -228,7 +275,7 @@ const ContactSearchScreen = () => {
 
 <SectionList
   sections={filteredSections}
-  keyExtractor={(item, index) => item.id + index}
+  keyExtractor={(item, index) => item?.id ? item.id : `contact-${index}`}
   renderItem={renderItem}
   renderSectionHeader={renderSectionHeader}
   ListEmptyComponent={

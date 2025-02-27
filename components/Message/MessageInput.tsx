@@ -1,53 +1,34 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   TextInput,
-  Pressable,
   Alert,
   useColorScheme,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet,
-  Image,
   Text,
   TouchableOpacity,
-  FlatList,
-  Keyboard,
-  Dimensions,
-  Animated,
-  ImageBackground
-
 } from 'react-native';
 import Entypo from '@expo/vector-icons/Entypo';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-
-import { API, Auth, Storage } from 'aws-amplify';
-import * as mutations from '../../src/graphql/mutations';
-import EmojiSelector from 'react-native-emoji-selector';
 import * as ImagePicker from 'expo-image-picker';
 import { AntDesign } from '@expo/vector-icons';
-import uuid from 'react-native-uuid';
 import {Audio, AVPlaybackStatus}from"expo-av";
-
 import AudioPlayer from '../AudioPlayer/AudioPlayer';
 import { S3Image } from 'aws-amplify-react-native';
-import Message from './Message';
-import menuOptions from "../menuOptions"
-import { listChatRoomUsers } from '@/src/graphql/queries';
-import { listChatRoomUsersWithDetails } from '@/src/CustomQuery';
-
-
-
-
-
+import {styles} from "./styles"
+import { useRouter } from 'expo-router';
+import { CREATE_MESSAGE,UPDATE_CHATROOM, UPDATE_MESSAGE } from '@/src/graphql/operations';
+import { useMutation } from '@apollo/client';
+import { uploadToS3 } from '@/utils/uploadToS3';
+import { useApolloClient } from "@apollo/client";
 const MessageInput = ({ chatRoom,messageReply,removeMessageReply,authUserId,user }) => {
-  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([]); 
+const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
-  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [recording, setRecording] = useState<Audio.Recording|null>(null);
@@ -56,17 +37,19 @@ const MessageInput = ({ chatRoom,messageReply,removeMessageReply,authUserId,user
   const [audioProgress,setAudioProgress]=useState(0);
   const [audioDuration,setAudioDuration]=useState(0);
   const [soundUri,setSoundUri]=useState<string|null>(null);
- 
+  const inputBackgroundColor = isDarkMode ? '#1d1d1d' : '#ddd';
+  const iconColor = isDarkMode ? '#fff' : '#000';
+  const iconbackgroundColor=isDarkMode?"#333":"lightgray";
+  const [createMessage] = useMutation(CREATE_MESSAGE);
+  const [updateChatRoom] = useMutation(UPDATE_CHATROOM);
+  const [updateMessage] = useMutation(UPDATE_MESSAGE);
+  
   const senderName =
   messageReply?.userID === authUserId ? "You" :user?.name;
-console.log(messageReply?.image)
 
-
-  
-
+const router=useRouter();
   const resetField = () => {
     setMessage('');
-    setIsEmojiOpen(false);
     setImage(null);
     setProgress(0);
     setSound(null);
@@ -90,30 +73,41 @@ console.log(messageReply?.image)
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,
+      allowsEditing: false, // Disable built-in cropping
+      quality: 0.7,
     });
-
+  
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      router.push({pathname:'/ImagePreviewScreen', params:{ imageUri: result.assets[0].uri ,ChatroomId:chatRoom?.id,authUserId:authUserId}});
     }
   };
-
+  const client=useApolloClient()
+    
   const sendMessage = async () => {
-    setLoading(true);
+    if (!message.trim()) return;
+  
+    const tempId = `temp-${Date.now()}`;
+  
+    const tempMessage = {
+      id: tempId,  // Temporary ID
+      content: message,
+      userID: authUserId,
+      chatroomID: chatRoom?.id,
+      status: "SENT",
+      createdAt: new Date().toISOString(),
+    };
+  
+    /*
+    setMessages((prevMessages) => [tempMessage, ...prevMessages]);
+  */
+    resetField();
   
     try {
-      const user = await Auth.currentAuthenticatedUser();
-      const userId = user.attributes.sub;
-  
-      // Create a new message
-      const newMessageResponse = await API.graphql({
-        query: mutations.createMessage,
+      const { data } = await createMessage({
         variables: {
           input: {
             content: message,
-            userID: userId,
+            userID: authUserId,
             chatroomID: chatRoom?.id,
             status: "SENT",
             replyToMessageId: messageReply?.id,
@@ -121,11 +115,29 @@ console.log(messageReply?.image)
         },
       });
   
-      const newMessage = newMessageResponse.data.createMessage;
+      const newMessage = data.createMessage;
   
-      // Update chat room with the new last message
-      const chatRoomUpdateResponse = await API.graphql({
-        query: mutations.updateChatRoom,
+    /*  // ✅ Update Apollo Cache, replacing temp message
+      client.cache.updateQuery(
+        {
+          query: LIST_MESSAGES,
+          variables: { filter: { chatroomID: { eq: chatRoom?.id } }, limit: 1000 },
+        },
+        (existingData) => {
+          return {
+            listMessages: {
+              ...existingData.listMessages,
+              items: [
+                newMessage, // Add the new message
+                ...existingData.listMessages.items.filter((msg) => msg.id !== tempId), // Remove temp message
+              ],
+            },
+          };
+        }
+      );*/
+  
+      // ✅ Update Chatroom Last Message
+      await updateChatRoom({
         variables: {
           input: {
             id: chatRoom?.id,
@@ -134,37 +146,8 @@ console.log(messageReply?.image)
         },
       });
   
-      const updatedChatRoom = chatRoomUpdateResponse.data.updateChatRoom;
-  
-      // Increment unseen messages for other users in the chat room
-      if (updatedChatRoom) {
-        const chatRoomUsersResponse = await API.graphql({
-          query: listChatRoomUsers,
-          variables: {
-            filter: { chatRoomId: { eq: chatRoom.id } },
-          },
-        });
-  
-        const chatRoomUsers = chatRoomUsersResponse.data.listChatRoomUsers.items;
-  
-        for (const user of chatRoomUsers) {
-          if (user.userId !== userId) {
-            await API.graphql({
-              query: mutations.updateChatRoom,
-              variables: {
-                input: {
-                  id: chatRoom?.id,
-                  newMessages: (updatedChatRoom.newMessages || 0) + 1,
-                },
-              },
-            });
-          }
-        }
-      }
-  
-      // Mark the message as delivered
-      await API.graphql({
-        query: mutations.updateMessage,
+      // ✅ Mark message as delivered
+      await updateMessage({
         variables: {
           input: {
             id: newMessage.id,
@@ -172,114 +155,37 @@ console.log(messageReply?.image)
           },
         },
       });
-  
-      resetField();
     } catch (error) {
       console.error("Error sending message:", error);
       Alert.alert("Error", "Failed to send the message.");
-    } finally {
-      setLoading(false);
     }
   };
   
+
+   const takePhoto = async () => {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
   
- 
-
-  const sendImage = async () => {
-    if (!image) return;
-
-    try {
-      const blob = await getBlob(image);
-      if (!blob) {
-        console.log('Failed to create blob from image URI');
-        return;
+      if (!result.canceled) {
+        router.push({pathname:'/ImagePreviewScreen', params:{ imageUri: result.assets[0].uri ,ChatroomId:chatRoom?.id,authUserId:authUserId}});
       }
-
-      const { key } = await Storage.put(`${uuid.v4()}.png`, blob, {
-        progressCallback: (progress) => {
-          console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-          setProgress(progress.loaded / progress.total);
-        },
-      });
-
-      const user = await Auth.currentAuthenticatedUser();
-      const newMessage = await API.graphql({
-        query: mutations.createMessage,
-        variables: {
-          input: {
-            content: message || '',
-            image: key,
-            userID: user.attributes.sub,
-            chatroomID: chatRoom.id,
-            status:"SENT",
-            replyToMessageId:messageReply?.id
-          },
-        },
-      });
-
-      await API.graphql({
-        query: mutations.updateChatRoom,
-        variables: {
-          input: {
-            id: chatRoom.id,
-            chatRoomLastMessageId: newMessage.data.createMessage.id,
-          },
-        },
-      });
-
-      await API.graphql({
-        query: mutations.updateMessage,
-        variables: {
-          input: {
-            id: newMessage.data.createMessage.id,
-            status: "DELIVERED",
-          },
-        },
-      });
-
-      resetField();
-    } catch (error) {
-      console.error('Error sending image:', error);
-      Alert.alert('Error', 'Failed to send the image.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-
-
+    };
   
 
-  const getBlob = async (uri:string) => {
-    try {
-      const response = await fetch(uri);
-      return await response.blob();
-    } catch (error) {
-      console.error('Error fetching image blob:', error);
-    }
-  };
 
   const onPress = () => {
-    if (image) {
-      sendImage();
-    }else if(soundUri){
-      sendAudio();
-    }
-     else if (message) {
+     if (soundUri) {
+      sendAudio(soundUri, audioDuration); // Pass audio URI and duration
+    } else if (message.trim()) {
       sendMessage();
     } else {
-      Alert.alert('Action Required', 'Please enter a message or pick an image.');
+      Alert.alert("Action Required", "Please enter a message or pick an image.");
     }
   };
-
-  const toggleEmojiSelector = useCallback(() => {
-    setIsEmojiOpen((prev) => !prev);
-  }, []);
-
-  const inputBackgroundColor = isDarkMode ? '#1d1d1d' : '#ddd';
-  const iconColor = isDarkMode ? '#fff' : '#000';
-  const iconbackgroundColor=isDarkMode?"#333":"lightgray";
+  
 
 
 
@@ -338,142 +244,84 @@ async function stopRecording() {
 }
 
 
+const sendAudio = async (audioUri: string, duration: number) => {
+  if (!audioUri) return;
 
-const sendAudio = async () => {
-  if (!soundUri) return;
+  const tempMessage = {
+    id: `temp-${Date.now()}`,
+    content: null,
+    audio: audioUri,
+    duration: duration,
+    userID: authUserId,
+    chatroomID: chatRoom?.id,
+    status: "SENDING",
+    createdAt: new Date().toISOString(),
+  };
+
+  // Optimistically update UI
+  setMessages((prevMessages) => [tempMessage, ...prevMessages]);
 
   try {
-    const blob = await getBlob(soundUri);
-    if (!blob) {
-      console.log('Failed to create blob from image URI');
-      return;
-    }
+    const audioUrl = await uploadToS3(audioUri, "audio", undefined);
 
-    const uriParts=soundUri.split(".");
-    const extension=uriParts[uriParts.length-1];
-
-    const { key } = await Storage.put(`${uuid.v4()}.${extension}`, blob, {
-      progressCallback: (progress) => {
-        console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-        setProgress(progress.loaded / progress.total);
-      },
-    });
-
-    const user = await Auth.currentAuthenticatedUser();
-    const newMessage = await API.graphql({
-      query: mutations.createMessage,
+    const { data } = await createMessage({
       variables: {
         input: {
-          content: message || '',
-          audio: key,
-          userID: user.attributes.sub,
-          chatroomID: chatRoom.id,
-          status:"SENT",
-          replyToMessageId:messageReply?.id
+          content: null,
+          audio: audioUrl,
+         // duration: duration,
+          userID: authUserId,
+          chatroomID: chatRoom?.id,
+          status: "SENT",
         },
       },
     });
 
-    await API.graphql({
-      query: mutations.updateChatRoom,
+    const newMessage = data.createMessage;
+
+    // Update chat room's last message
+    await updateChatRoom({
       variables: {
         input: {
-          id: chatRoom.id,
-          chatRoomLastMessageId: newMessage.data.createMessage.id,
+          id: chatRoom?.id,
+          chatRoomLastMessageId: newMessage.id,
         },
       },
     });
 
-    await API.graphql({
-      query: mutations.updateMessage,
+    // Mark the message as delivered
+    await updateMessage({
       variables: {
         input: {
-          id: newMessage.data.createMessage.id,
+          id: newMessage.id,
           status: "DELIVERED",
         },
       },
     });
-
-
-    resetField();
+resetField();
+    // Replace temporary message with real message
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.id === tempMessage.id ? { ...newMessage, status: "SENT" } : msg
+      )
+    );
   } catch (error) {
-    console.error('Error sending image:', error);
-    Alert.alert('Error', 'Failed to send the image.');
-  } finally {
-    setLoading(false);
+    console.error("Error sending audio:", error);
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.id === tempMessage.id ? { ...msg, status: "FAILED" } : msg
+      )
+    );
+    Alert.alert("Error", "Failed to send the audio.");
   }
 };
 
 
-
-const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
-  const handleEmojiClick = () => {
-   // Keyboard.dismiss(); // Disable the keyboard
-   console.log("handlle emoji picker");
-    setShowEmojiPicker(!showEmojiPicker); // Toggle emoji picker
-    console.log("showemojipicker",showEmojiPicker);
-  };
-
-  const handleEmojiSelect = ( emoji: string ) => {
-    setMessage((prevMessage) => prevMessage + emoji); // Append emoji to input
-  };
-
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const screenHeight = Dimensions.get('window').height;
-  useEffect(() => {
-    const showListener = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-      setMenuVisible(false); // Ensure menu is hidden when keyboard shows
-    });
-
-    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showListener.remove();
-      hideListener.remove();
-    };
-  }, []);
-  const menuHeight = useRef(new Animated.Value(0)).current; 
-  const [isMenuVisible, setMenuVisible] = useState(false);
-  const [inputText, setInputText] = useState('');
-  const toggleMenu = () => {
-    if (isMenuVisible) {
-      // Close menu
-      Animated.timing(menuHeight, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }).start(() => setMenuVisible(false));
-    } else {
-      Keyboard.dismiss(); // Dismiss keyboard
-      setMenuVisible(true); // Show menu
-      Animated.timing(menuHeight, {
-        toValue: screenHeight * 0.35, // Menu height
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    }
-  };
-
-  
-  const onfocuspress=()=>{
-    setMenuVisible(false); // Hide menu when input is focused
-    Animated.timing(menuHeight, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-     setShowEmojiPicker(false)
-  }
-
   return (
     <KeyboardAvoidingView
-      style={[styles.root, { marginBottom: 30 }]}
+      style={[styles.root, { marginBottom: 60 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={80}
+  keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 60} 
     >
        {messageReply && (
       <View style={[styles.replyContainer, { backgroundColor: iconbackgroundColor }]}>
@@ -511,220 +359,63 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false);
         </TouchableOpacity>
         </View>
        )}
-          
-      {image && (
-        <View style={styles.sendImageContainer}>
-          <Image source={{ uri: image }} style={{ height: 110, width: 110, borderRadius: 10 }} />
-          <View
-          style={{flex:1,justifyContent:"flex-start",alignSelf:"flex-end"}}>
-          <View style={{height:5,borderRadius:5,backgroundColor:"#3777f0",width:`${progress*100}%`}}/>
-          </View>
-          <AntDesign name="closecircleo" size={24} color={iconColor} onPress={() => setImage(null)} />
-        </View>
-      )}
-
       {soundUri && (
        <AudioPlayer soundUri={soundUri} onClose={()=>setSoundUri(null)}/>
       )}
 
       <View style={styles.row}>
         <View style={[styles.inputContainer, { backgroundColor: inputBackgroundColor }]}>
-          <TouchableOpacity onPress={handleEmojiClick} style={styles.iconContainer}>
-            <Entypo name="emoji-happy" size={24} color={iconColor}  />
+        <TouchableOpacity onPress={takePhoto} style={styles.cameraContainer}>
+            <Entypo name="camera" size={24} color={iconColor}  />
           </TouchableOpacity>
           <TextInput
             style={[styles.input, { backgroundColor: inputBackgroundColor, color: iconColor }]}
             placeholder="Type a message..."
             placeholderTextColor={isDarkMode ? '#aaa' : 'gray'}
             value={message}
-            onFocus={onfocuspress}
             onChangeText={setMessage}
             multiline
           />
-          {
-            message.trim()===''?(
-              <>
-              <Pressable onPress={pickImage} style={styles.iconContainer}>
+            <TouchableOpacity onPress={pickImage} style={styles.cameraContainer}>
             <Feather name="image" size={22} color={iconColor} />
-            </Pressable>
-              <Pressable  onPressIn={startRecording}
-              onPressOut={stopRecording}
-              style={[styles.iconContainer]}
-              >
-            <MaterialCommunityIcons
-              name={recording?"microphone":"microphone-outline"}
-              size={recording?40:24}
-              color={recording?"red":iconColor}
-              style={styles.icon}
-             
-            />
-            </Pressable>
-            
-            </>
-            ):(
-              <Pressable style={styles.iconContainer} onPress={toggleMenu}>
-              <Feather name="plus" size={24} color={iconColor} />
-              </Pressable>
-            )
-          }
+            </TouchableOpacity>
+          
           
         </View>
-  
-          {loading ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : message || image ||soundUri? (
-            <TouchableOpacity onPress={onPress} style={styles.buttonContainer}>
-           <MaterialCommunityIcons name="send-lock" size={26} color="white" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={toggleMenu} style={styles.buttonContainer}>
-            <Feather name="plus" size={24} color="white" />
-            </TouchableOpacity>
-          )}
-        
-      </View>
-      {showEmojiPicker && (
-        <EmojiSelector
-          onEmojiSelected={handleEmojiSelect}
-          showSearchBar={false} // Disable search bar for simplicity
-          columns={8} // Adjust the number of columns to fit your design
-        />
-      )}
-       <Animated.View
-        style={[
-          styles.menuContainer,
-          {
-            height: menuHeight, // Animated height
-          },
-        ]}
+  {
+    message.trim()===''?(
+      soundUri||image?(
+        <TouchableOpacity onPress={onPress} style={styles.buttonContainer}>
+        <MaterialCommunityIcons name="send-lock" size={20} color="white"/>
+         </TouchableOpacity>
+    ):(
+      <TouchableOpacity
+      onLongPress={startRecording}
+      onPressOut={stopRecording}
+      style={[styles.buttonContainer]}
       >
-        <FlatList
-          data={menuOptions}
-          keyExtractor={(item) => item.id.toString()}
-          numColumns={3}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                console.log(`${item.name} clicked`);
-                toggleMenu(); // Hide menu after selecting an item
-              }}
-            >
-              <MaterialCommunityIcons name={item.icon} size={30} color={iconColor} />
-              <Text style={[styles.menuText]}>{item.name}</Text>
-            </TouchableOpacity>
-          )}
-        />
-      </Animated.View>
+    <MaterialCommunityIcons
+      name={recording?"microphone":"microphone-outline"}
+      size={recording?40:24}
+      color={"white"}
+      style={styles.icon}
+     
+    />
+    </TouchableOpacity>
+    )
+    
+    ):
+    (
+      <TouchableOpacity onPress={onPress} style={styles.buttonContainer}>
+      <MaterialCommunityIcons name="send-lock" size={20} color="white"/>
+       </TouchableOpacity>
+    )
+  }     
+      </View>
     </KeyboardAvoidingView>
   );
 };
 
-const styles = StyleSheet.create({
-  root: { padding: 10, marginBottom: 50 },
-  row: { flexDirection: 'row' },
-  inputContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'lightgray',
-    borderRadius: 25,
-    paddingHorizontal: 10,
-    marginRight: 5,
-    padding: 5,
-  },
-  input: { flex: 1, paddingVertical: 10, fontSize: 16, borderRadius: 25 },
-  icon: {  },
-  buttonContainer: {
-    width: 45,
-    height: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#3777f0',
-    borderRadius: 25,
-    
-  },
-  iconContainer: {
-    width: 35,
-    height: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-    //backgroundColor: '#3777f0',
-    borderRadius: 25,
-    
-  },
-  sendImageContainer: {
-    flexDirection: 'row',
-    margin: 10,
-    alignSelf: 'stretch',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'gray',
-    borderRadius: 10,
-  },
-  sendAudioContainer: {
-    flexDirection: 'row',
-    marginVertical: 10,
-    padding:15,
-    alignItems:"center",
-    alignSelf: 'stretch',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'gray',
-    borderRadius: 10,
-    
-  },
-  AudioBackground:{
-    height:5,
-    flex:1,
-    backgroundColor:"lightgray",
-    borderRadius:5,
-    margin:10
-  },
-  menuContainer: {
-    //backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
-    alignItems:"center",
-    padding:10
-  },
-  menuItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: 10,
-    width: 70,
-  },
-  menuText: {
-    marginTop: 5,
-    fontSize: 12,
-    textAlign: 'center',
-    color:"gray"
-  },
-  replyContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  replyBar: {
-    width: 5,
-    height: '100%',
-    backgroundColor: '#3777f0',
-    borderRadius: 2,
-    marginRight: 10,
-  },
-  replyContent: { flex: 1 },
-  replyTitle: { fontWeight: 'bold', color: '#3777f0' },
-  replyMessage: { color: '#000', marginTop: 2 },
-  replyImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 5,
-    marginTop: 5,
-  },
-});
 
 export default MessageInput;
 

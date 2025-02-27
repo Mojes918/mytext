@@ -1,6 +1,57 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const onCreateRandomChatQueue = /* GraphQL */ `
+  subscription OnCreateRandomChatQueue(
+    $filter: ModelSubscriptionRandomChatQueueFilterInput
+  ) {
+    onCreateRandomChatQueue(filter: $filter) {
+      id
+      userID
+      status
+      tempName
+      tempImageUri
+      chatRoomId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateRandomChatQueue = /* GraphQL */ `
+  subscription OnUpdateRandomChatQueue(
+    $filter: ModelSubscriptionRandomChatQueueFilterInput
+  ) {
+    onUpdateRandomChatQueue(filter: $filter) {
+      id
+      userID
+      status
+      tempName
+      tempImageUri
+      chatRoomId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteRandomChatQueue = /* GraphQL */ `
+  subscription OnDeleteRandomChatQueue(
+    $filter: ModelSubscriptionRandomChatQueueFilterInput
+  ) {
+    onDeleteRandomChatQueue(filter: $filter) {
+      id
+      userID
+      status
+      tempName
+      tempImageUri
+      chatRoomId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateMessage = /* GraphQL */ `
   subscription OnCreateMessage($filter: ModelSubscriptionMessageFilterInput) {
     onCreateMessage(filter: $filter) {
@@ -14,6 +65,7 @@ export const onCreateMessage = /* GraphQL */ `
       replyToMessageId
       scheduledTime
       isScheduled
+      deleted
       createdAt
       updatedAt
       __typename
@@ -33,6 +85,7 @@ export const onUpdateMessage = /* GraphQL */ `
       replyToMessageId
       scheduledTime
       isScheduled
+      deleted
       createdAt
       updatedAt
       __typename
@@ -52,6 +105,58 @@ export const onDeleteMessage = /* GraphQL */ `
       replyToMessageId
       scheduledTime
       isScheduled
+      deleted
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateRandomMessage = /* GraphQL */ `
+  subscription OnCreateRandomMessage(
+    $filter: ModelSubscriptionRandomMessageFilterInput
+  ) {
+    onCreateRandomMessage(filter: $filter) {
+      id
+      content
+      userID
+      randomChatRoomID
+      status
+      replyToMessageId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateRandomMessage = /* GraphQL */ `
+  subscription OnUpdateRandomMessage(
+    $filter: ModelSubscriptionRandomMessageFilterInput
+  ) {
+    onUpdateRandomMessage(filter: $filter) {
+      id
+      content
+      userID
+      randomChatRoomID
+      status
+      replyToMessageId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteRandomMessage = /* GraphQL */ `
+  subscription OnDeleteRandomMessage(
+    $filter: ModelSubscriptionRandomMessageFilterInput
+  ) {
+    onDeleteRandomMessage(filter: $filter) {
+      id
+      content
+      userID
+      randomChatRoomID
+      status
+      replyToMessageId
       createdAt
       updatedAt
       __typename
@@ -62,7 +167,6 @@ export const onCreateChatRoom = /* GraphQL */ `
   subscription OnCreateChatRoom($filter: ModelSubscriptionChatRoomFilterInput) {
     onCreateChatRoom(filter: $filter) {
       id
-      newMessages
       LastMessage {
         id
         content
@@ -74,15 +178,29 @@ export const onCreateChatRoom = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
       }
+      type
       Messages {
         nextToken
         __typename
       }
+      RandomMessages {
+        nextToken
+        __typename
+      }
       ChatRoomUsers {
+        nextToken
+        __typename
+      }
+      RandomChatRoomUsers {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -97,7 +215,6 @@ export const onUpdateChatRoom = /* GraphQL */ `
   subscription OnUpdateChatRoom($filter: ModelSubscriptionChatRoomFilterInput) {
     onUpdateChatRoom(filter: $filter) {
       id
-      newMessages
       LastMessage {
         id
         content
@@ -109,15 +226,29 @@ export const onUpdateChatRoom = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
       }
+      type
       Messages {
         nextToken
         __typename
       }
+      RandomMessages {
+        nextToken
+        __typename
+      }
       ChatRoomUsers {
+        nextToken
+        __typename
+      }
+      RandomChatRoomUsers {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -132,7 +263,6 @@ export const onDeleteChatRoom = /* GraphQL */ `
   subscription OnDeleteChatRoom($filter: ModelSubscriptionChatRoomFilterInput) {
     onDeleteChatRoom(filter: $filter) {
       id
-      newMessages
       LastMessage {
         id
         content
@@ -144,11 +274,17 @@ export const onDeleteChatRoom = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
       }
+      type
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
         nextToken
         __typename
       }
@@ -156,9 +292,134 @@ export const onDeleteChatRoom = /* GraphQL */ `
         nextToken
         __typename
       }
+      RandomChatRoomUsers {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       chatRoomLastMessageId
+      __typename
+    }
+  }
+`;
+export const onCreateUnreadMessages = /* GraphQL */ `
+  subscription OnCreateUnreadMessages(
+    $filter: ModelSubscriptionUnreadMessagesFilterInput
+  ) {
+    onCreateUnreadMessages(filter: $filter) {
+      id
+      chatRoomId
+      userId
+      newMessages
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      chatRoomUnreadMessagesId
+      userUnreadMessagesId
+      __typename
+    }
+  }
+`;
+export const onUpdateUnreadMessages = /* GraphQL */ `
+  subscription OnUpdateUnreadMessages(
+    $filter: ModelSubscriptionUnreadMessagesFilterInput
+  ) {
+    onUpdateUnreadMessages(filter: $filter) {
+      id
+      chatRoomId
+      userId
+      newMessages
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      chatRoomUnreadMessagesId
+      userUnreadMessagesId
+      __typename
+    }
+  }
+`;
+export const onDeleteUnreadMessages = /* GraphQL */ `
+  subscription OnDeleteUnreadMessages(
+    $filter: ModelSubscriptionUnreadMessagesFilterInput
+  ) {
+    onDeleteUnreadMessages(filter: $filter) {
+      id
+      chatRoomId
+      userId
+      newMessages
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      chatRoomUnreadMessagesId
+      userUnreadMessagesId
       __typename
     }
   }
@@ -171,7 +432,16 @@ export const onCreateUser = /* GraphQL */ `
       imageUri
       backgroundImageUri
       status
+      pushToken
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
+        nextToken
+        __typename
+      }
+      randomChatrooms {
         nextToken
         __typename
       }
@@ -191,6 +461,10 @@ export const onCreateUser = /* GraphQL */ `
         __typename
       }
       following {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -208,7 +482,16 @@ export const onUpdateUser = /* GraphQL */ `
       imageUri
       backgroundImageUri
       status
+      pushToken
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
+        nextToken
+        __typename
+      }
+      randomChatrooms {
         nextToken
         __typename
       }
@@ -228,6 +511,10 @@ export const onUpdateUser = /* GraphQL */ `
         __typename
       }
       following {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -245,7 +532,16 @@ export const onDeleteUser = /* GraphQL */ `
       imageUri
       backgroundImageUri
       status
+      pushToken
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
+        nextToken
+        __typename
+      }
+      randomChatrooms {
         nextToken
         __typename
       }
@@ -265,6 +561,10 @@ export const onDeleteUser = /* GraphQL */ `
         __typename
       }
       following {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -285,6 +585,7 @@ export const onCreatePost = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -326,6 +627,7 @@ export const onUpdatePost = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -367,6 +669,7 @@ export const onDeletePost = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -482,6 +785,7 @@ export const onCreateComment = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -508,6 +812,7 @@ export const onUpdateComment = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -534,6 +839,7 @@ export const onDeleteComment = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -593,7 +899,7 @@ export const onCreateChatRoomUser = /* GraphQL */ `
       userId
       chatRoom {
         id
-        newMessages
+        type
         createdAt
         updatedAt
         chatRoomLastMessageId
@@ -605,6 +911,7 @@ export const onCreateChatRoomUser = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -628,7 +935,7 @@ export const onUpdateChatRoomUser = /* GraphQL */ `
       userId
       chatRoom {
         id
-        newMessages
+        type
         createdAt
         updatedAt
         chatRoomLastMessageId
@@ -640,6 +947,7 @@ export const onUpdateChatRoomUser = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -663,7 +971,7 @@ export const onDeleteChatRoomUser = /* GraphQL */ `
       userId
       chatRoom {
         id
-        newMessages
+        type
         createdAt
         updatedAt
         chatRoomLastMessageId
@@ -675,6 +983,115 @@ export const onDeleteChatRoomUser = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateRandomChatRoomUser = /* GraphQL */ `
+  subscription OnCreateRandomChatRoomUser(
+    $filter: ModelSubscriptionRandomChatRoomUserFilterInput
+  ) {
+    onCreateRandomChatRoomUser(filter: $filter) {
+      id
+      chatRoomId
+      userId
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateRandomChatRoomUser = /* GraphQL */ `
+  subscription OnUpdateRandomChatRoomUser(
+    $filter: ModelSubscriptionRandomChatRoomUserFilterInput
+  ) {
+    onUpdateRandomChatRoomUser(filter: $filter) {
+      id
+      chatRoomId
+      userId
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteRandomChatRoomUser = /* GraphQL */ `
+  subscription OnDeleteRandomChatRoomUser(
+    $filter: ModelSubscriptionRandomChatRoomUserFilterInput
+  ) {
+    onDeleteRandomChatRoomUser(filter: $filter) {
+      id
+      chatRoomId
+      userId
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
         lastOnlineAt
         phonenumber
         email

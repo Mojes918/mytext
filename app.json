@@ -1,37 +1,44 @@
 {
   "expo": {
-    "name": "myText",
+    "name": "MyChat",
     "slug": "myText",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/AppLogo.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "enableHermes": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/AppLogo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#2155cd"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "package": "com.Vikram.MyChat"
     },
     "plugins": [
       "expo-router"
     ],
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/AppLogo.png"
+    },
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "445114ec-0484-43f8-8562-401878c910fb"
+      }
+    },
+    "owner": "eadaramojes"
   }
 }

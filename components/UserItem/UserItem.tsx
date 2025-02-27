@@ -4,6 +4,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { API, Auth } from 'aws-amplify';
 import * as mutations from '../../src/graphql/mutations';
 import { chatRoomUsersByChatRoomId, chatRoomUsersByUserId, getUser, listChatRooms } from '@/src/graphql/queries';
+import { useRouter } from 'expo-router';
 
 type RootStackParamList = {
   ChatRoomScreen: { id: string };
@@ -13,13 +14,13 @@ export default function UserItem({ user }: { user: { id: string; name: string; i
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
-
+const router=useRouter();
   const textColor = isDarkMode ? 'white' : 'black';
   const backgroundColor = isDarkMode ? '#121212' : 'white';
   const borderColor = isDarkMode ? '#333' : '#ddd';
 
 
-
+//console.log(user);
   const onPress = async () => {
     try {
       const authUser = await Auth.currentAuthenticatedUser();
@@ -38,7 +39,7 @@ export default function UserItem({ user }: { user: { id: string; name: string; i
   
       // Step 2: Check if any of the user's chat rooms include the selected user
       let existingChatRoomId: string | null = null;
-  
+      //console.log("User pressed:", user);
       for (const chatRoomUser of userChatRoomUsers) {
         const chatRoomId = chatRoomUser.chatRoomId;
   
@@ -63,16 +64,16 @@ export default function UserItem({ user }: { user: { id: string; name: string; i
       }
   
       if (existingChatRoomId) {
-        // Navigate to the existing chat room
-        navigation.navigate('ChatRoomScreen', { id: existingChatRoomId });
-        Alert.alert('Existing ChatRoom');
+        //console.log("Navigating to existing chat room:", existingChatRoomId);
+        router.push({ pathname: '/ChatRoomScreen', params: { ChatRoomId: existingChatRoomId } });
+
         return;
       }
   
       // Step 3: Create a new chat room if no existing one is found
       const newChatRoomResponse = await API.graphql({
         query: mutations.createChatRoom,
-        variables: { input: { newMessages: 0 } },
+        variables: { input: {  } },
       });
   
       const newChatRoomId = newChatRoomResponse.data.createChatRoom.id;
@@ -88,11 +89,11 @@ export default function UserItem({ user }: { user: { id: string; name: string; i
           variables: { input: { userId: user.id, chatRoomId: newChatRoomId } },
         }),
       ]);
-  
-      Alert.alert('Chat Room Created Successfully');
-      navigation.navigate('ChatRoomScreen', { id: newChatRoomId });
+      //console.log("Creating new chat room...");
+      //console.log("Navigating to new chat room:", newChatRoomId);
+      router.push({ pathname: '/ChatRoomScreen', params: { ChatRoomId: newChatRoomId } });
     } catch (error: any) {
-      console.error('Error creating or navigating to chat room:', error);
+      //console.error('Error creating or navigating to chat room:');
       Alert.alert('Error', error.message || 'An unexpected error occurred.');
     }
   };
@@ -101,12 +102,12 @@ export default function UserItem({ user }: { user: { id: string; name: string; i
 
 
 return(
-    <TouchableOpacity onPress={onPress}>
-      <View style={{ paddingTop: 20, backgroundColor }}>
+    <TouchableOpacity style={{padding:5}}>
+      <TouchableOpacity style={{ padding: 10,alignItems:"center" }}  onPress={onPress}>
         <View style={{ paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center' }}>
           <Pressable style={{ flexDirection: 'row', paddingHorizontal: 2 }}>
             <Image
-              source={{ uri: user.imageUri || '../../assets/images/default-user.png' }}
+              source={{ uri: user.imageUri || '../../assets/images/default.jpg' }}
               style={{
                 height: 45,
                 width: 45,
@@ -120,21 +121,8 @@ return(
             <Text style={{ fontWeight: 'medium', fontSize: 18, color: textColor }}>{user.name}</Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
 
-
-
-/*
-Multiple Network Requests:
-Fetching all chat rooms for a user and then querying each room to check for a specific user can result in multiple network calls,
- which might be inefficient if the user has many chat rooms.
-
-Scalability:
-As the number of chat rooms grows, the approach might become slower due to the need to iterate over many chat rooms and fetch users for each.
-Pagination Handling:
-
-If a user has a large number of chat rooms or users in a chat room, pagination might complicate the logic further.
-*/

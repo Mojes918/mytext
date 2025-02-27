@@ -1,6 +1,110 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const getRandomChatQueue = /* GraphQL */ `
+  query GetRandomChatQueue($id: ID!) {
+    getRandomChatQueue(id: $id) {
+      id
+      userID
+      status
+      tempName
+      tempImageUri
+      chatRoomId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listRandomChatQueues = /* GraphQL */ `
+  query ListRandomChatQueues(
+    $filter: ModelRandomChatQueueFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listRandomChatQueues(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        userID
+        status
+        tempName
+        tempImageUri
+        chatRoomId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const randomChatQueuesByUserID = /* GraphQL */ `
+  query RandomChatQueuesByUserID(
+    $userID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelRandomChatQueueFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    randomChatQueuesByUserID(
+      userID: $userID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        userID
+        status
+        tempName
+        tempImageUri
+        chatRoomId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const randomChatQueuesByChatRoomId = /* GraphQL */ `
+  query RandomChatQueuesByChatRoomId(
+    $chatRoomId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelRandomChatQueueFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    randomChatQueuesByChatRoomId(
+      chatRoomId: $chatRoomId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        userID
+        status
+        tempName
+        tempImageUri
+        chatRoomId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getMessage = /* GraphQL */ `
   query GetMessage($id: ID!) {
     getMessage(id: $id) {
@@ -14,6 +118,7 @@ export const getMessage = /* GraphQL */ `
       replyToMessageId
       scheduledTime
       isScheduled
+      deleted
       createdAt
       updatedAt
       __typename
@@ -38,6 +143,7 @@ export const listMessages = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
@@ -73,6 +179,7 @@ export const messagesByUserID = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
@@ -108,6 +215,107 @@ export const messagesByChatroomID = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getRandomMessage = /* GraphQL */ `
+  query GetRandomMessage($id: ID!) {
+    getRandomMessage(id: $id) {
+      id
+      content
+      userID
+      randomChatRoomID
+      status
+      replyToMessageId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listRandomMessages = /* GraphQL */ `
+  query ListRandomMessages(
+    $filter: ModelRandomMessageFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listRandomMessages(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        content
+        userID
+        randomChatRoomID
+        status
+        replyToMessageId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const randomMessagesByUserID = /* GraphQL */ `
+  query RandomMessagesByUserID(
+    $userID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelRandomMessageFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    randomMessagesByUserID(
+      userID: $userID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        content
+        userID
+        randomChatRoomID
+        status
+        replyToMessageId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const randomMessagesByRandomChatRoomID = /* GraphQL */ `
+  query RandomMessagesByRandomChatRoomID(
+    $randomChatRoomID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelRandomMessageFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    randomMessagesByRandomChatRoomID(
+      randomChatRoomID: $randomChatRoomID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        content
+        userID
+        randomChatRoomID
+        status
+        replyToMessageId
         createdAt
         updatedAt
         __typename
@@ -121,7 +329,6 @@ export const getChatRoom = /* GraphQL */ `
   query GetChatRoom($id: ID!) {
     getChatRoom(id: $id) {
       id
-      newMessages
       LastMessage {
         id
         content
@@ -133,15 +340,29 @@ export const getChatRoom = /* GraphQL */ `
         replyToMessageId
         scheduledTime
         isScheduled
+        deleted
         createdAt
         updatedAt
         __typename
       }
+      type
       Messages {
         nextToken
         __typename
       }
+      RandomMessages {
+        nextToken
+        __typename
+      }
       ChatRoomUsers {
+        nextToken
+        __typename
+      }
+      RandomChatRoomUsers {
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -161,10 +382,132 @@ export const listChatRooms = /* GraphQL */ `
     listChatRooms(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
-        newMessages
+        type
         createdAt
         updatedAt
         chatRoomLastMessageId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getUnreadMessages = /* GraphQL */ `
+  query GetUnreadMessages($id: ID!) {
+    getUnreadMessages(id: $id) {
+      id
+      chatRoomId
+      userId
+      newMessages
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      chatRoomUnreadMessagesId
+      userUnreadMessagesId
+      __typename
+    }
+  }
+`;
+export const listUnreadMessages = /* GraphQL */ `
+  query ListUnreadMessages(
+    $filter: ModelUnreadMessagesFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listUnreadMessages(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        chatRoomId
+        userId
+        newMessages
+        createdAt
+        updatedAt
+        chatRoomUnreadMessagesId
+        userUnreadMessagesId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const unreadMessagesByChatRoomId = /* GraphQL */ `
+  query UnreadMessagesByChatRoomId(
+    $chatRoomId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelUnreadMessagesFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    unreadMessagesByChatRoomId(
+      chatRoomId: $chatRoomId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        chatRoomId
+        userId
+        newMessages
+        createdAt
+        updatedAt
+        chatRoomUnreadMessagesId
+        userUnreadMessagesId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const unreadMessagesByUserId = /* GraphQL */ `
+  query UnreadMessagesByUserId(
+    $userId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelUnreadMessagesFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    unreadMessagesByUserId(
+      userId: $userId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        chatRoomId
+        userId
+        newMessages
+        createdAt
+        updatedAt
+        chatRoomUnreadMessagesId
+        userUnreadMessagesId
         __typename
       }
       nextToken
@@ -180,7 +523,16 @@ export const getUser = /* GraphQL */ `
       imageUri
       backgroundImageUri
       status
+      pushToken
       Messages {
+        nextToken
+        __typename
+      }
+      RandomMessages {
+        nextToken
+        __typename
+      }
+      randomChatrooms {
         nextToken
         __typename
       }
@@ -192,32 +544,18 @@ export const getUser = /* GraphQL */ `
       phonenumber
       email
       posts {
-        items {
-          id
-          content
-          media
-          createdAt
-        }
         nextToken
         __typename
       }
       followers {
-        items {
-          id
-          followerID
-          followingID
-          createdAt
-        }
         nextToken
         __typename
       }
       following {
-        items {
-          id
-          followerID
-          followingID
-          createdAt
-        }
+        nextToken
+        __typename
+      }
+      UnreadMessages {
         nextToken
         __typename
       }
@@ -240,19 +578,10 @@ export const listUsers = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
-        followers {
-          items {
-            id
-          }
-        }
-        following {
-          items {
-            id
-          }
-        }
         createdAt
         updatedAt
         __typename
@@ -273,6 +602,7 @@ export const getPost = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -350,12 +680,6 @@ export const postsByUserID = /* GraphQL */ `
         media
         type
         shares
-        
-        user {
-          id
-          name
-          imageUri
-        }
         createdAt
         updatedAt
         __typename
@@ -365,7 +689,6 @@ export const postsByUserID = /* GraphQL */ `
     }
   }
 `;
-
 export const getLike = /* GraphQL */ `
   query GetLike($id: ID!) {
     getLike(id: $id) {
@@ -555,6 +878,7 @@ export const getComment = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -609,11 +933,6 @@ export const commentsByPostID = /* GraphQL */ `
         postID
         userID
         content
-        user {
-        id
-        name
-        imageUri
-      }
         createdAt
         updatedAt
         __typename
@@ -748,7 +1067,7 @@ export const getChatRoomUser = /* GraphQL */ `
       userId
       chatRoom {
         id
-        newMessages
+        type
         createdAt
         updatedAt
         chatRoomLastMessageId
@@ -760,6 +1079,7 @@ export const getChatRoomUser = /* GraphQL */ `
         imageUri
         backgroundImageUri
         status
+        pushToken
         lastOnlineAt
         phonenumber
         email
@@ -830,6 +1150,120 @@ export const chatRoomUsersByUserId = /* GraphQL */ `
     $nextToken: String
   ) {
     chatRoomUsersByUserId(
+      userId: $userId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        chatRoomId
+        userId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getRandomChatRoomUser = /* GraphQL */ `
+  query GetRandomChatRoomUser($id: ID!) {
+    getRandomChatRoomUser(id: $id) {
+      id
+      chatRoomId
+      userId
+      chatRoom {
+        id
+        type
+        createdAt
+        updatedAt
+        chatRoomLastMessageId
+        __typename
+      }
+      user {
+        id
+        name
+        imageUri
+        backgroundImageUri
+        status
+        pushToken
+        lastOnlineAt
+        phonenumber
+        email
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listRandomChatRoomUsers = /* GraphQL */ `
+  query ListRandomChatRoomUsers(
+    $filter: ModelRandomChatRoomUserFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listRandomChatRoomUsers(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        chatRoomId
+        userId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const randomChatRoomUsersByChatRoomId = /* GraphQL */ `
+  query RandomChatRoomUsersByChatRoomId(
+    $chatRoomId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelRandomChatRoomUserFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    randomChatRoomUsersByChatRoomId(
+      chatRoomId: $chatRoomId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        chatRoomId
+        userId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const randomChatRoomUsersByUserId = /* GraphQL */ `
+  query RandomChatRoomUsersByUserId(
+    $userId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelRandomChatRoomUserFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    randomChatRoomUsersByUserId(
       userId: $userId
       sortDirection: $sortDirection
       filter: $filter

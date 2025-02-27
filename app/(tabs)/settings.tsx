@@ -1,45 +1,28 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  ImageBackground,
-  TouchableOpacity,
-  useColorScheme,
-  Pressable,
-  Alert,
-  ActivityIndicator,
-  TextInput,
-} from "react-native";
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, TextInput, useColorScheme, TouchableWithoutFeedback } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { API, Auth, graphqlOperation } from "aws-amplify";
-import { updateUser } from "@/src/graphql/mutations";
-import { getUser } from "../../src/graphql/queries";
-import { onUpdateUser } from "@/src/graphql/subscriptions";
-import Icon from "react-native-vector-icons/Ionicons";
+import { useQuery, useMutation } from "@apollo/client";  // Import Apollo Client hooks
 import { useRouter } from "expo-router";
+import awsconfig from "../../src/aws-exports";
+import { styles } from "../styles/profilestyles";
+import { Auth, Storage } from "aws-amplify";
+import { useApolloClient } from "@apollo/client";  // Import useApolloClient
+import { Ionicons } from "@expo/vector-icons";
+import { Modal } from "react-native";
+import{GET_USER,UPDATE_USER} from "../../src/graphql/operations"
 
 // Define color themes
 const colorScheme = {
   dark: {
     background: "#121212",
-    card: "#121212",
     textPrimary: "#FFFFFF",
-    textSecondary: "#AAAAAA",
-    border: "#121212",
-    icon: "#DDDDDD",
   },
   light: {
     background: "#FFFFFF",
-    card: "#FFFFFF",
     textPrimary: "#121212",
-    textSecondary: "#555555",
-    border: "#fff",
-    icon: "#444444",
   },
 };
-// Define User Type
+
 type User = {
   id: string;
   name: string;
@@ -48,230 +31,257 @@ type User = {
   imageUri?: string;
   backgroundImageUri?: string;
 };
+
 export default function Settings() {
   const currentTheme = useColorScheme() || "dark";
   const theme = colorScheme[currentTheme];
-  const [user, setUser] = useState<User | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const [modalVisible, setModalVisible] = useState(false); // State to control modal visibility
+  const [modalImage, setModalImage] = useState<string | null>(null); // State to hold image to show in modal
+
+  const [userId, setUserId] = useState<string | null>(null);
 
 
-  // Logout Function
-  const LogOut = async () => {
+
+
+  const handleImagePress = (imageUri: string | null) => {
+    setModalImage(imageUri); // Set the image to be displayed in the modal
+    setModalVisible(true); // Open the modal
+  };
+
+  const closeModal = () => {
+    setModalVisible(false); // Close the modal
+    setModalImage(null); // Clear the modal image
+  };
+//console.log(userId)
+
+// Inside your component
+const client = useApolloClient();  // Get the Apollo Client instance
+  // UseEffect to fetch the userId from the authenticated user
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const user = await Auth.currentAuthenticatedUser();
+        setUserId(user.attributes.sub); // Store the authenticated user's ID
+      } catch (error) {
+        console.error("Error fetching user ID: ", error);
+      }
+    };
+    
+    fetchUserId();
+  }, []); // Runs once when the component mounts
+
+  // Fetch user data using Apollo's useQuery hook, passing the userId once available
+  const { data, loading, error } = useQuery(GET_USER, {
+    variables: { id: userId },
+    skip: !userId, // Skip the query until the userId is available
+    fetchPolicy:'cache-first'
+  });
+  useEffect(() => {
+    if (data?.getUser) {
+      setProfileImage(data.getUser.imageUri || null);
+      setBackgroundImage(data.getUser.backgroundImageUri || null);
+    }
+  }, [data]);
+  
+  const [updateUserMutation] = useMutation(UPDATE_USER, {
+    onCompleted: (data) => {
+      const updatedUser = data.updateUser;
+      // After updating the user, update the Apollo cache
+      client.cache.writeQuery({
+        query: GET_USER,
+        variables: { id: updatedUser.id },
+        data: { getUser: updatedUser }, // Write the updated user to Apollo cache
+      });
+    },
+    onError: (error) => {
+      console.error("Error updating user data:", error);
+      Alert.alert("Error", "Unable to update user data.");
+    },
+  });
+  
+
+  const updateUserData = async (updatedUser: User) => {
     try {
-      await Auth.signOut();
+      // Make the GraphQL mutation to update the user data
+      await updateUserMutation({
+        variables: { input: updatedUser },
+      });
+      // Update local state as well
+      setProfileImage(updatedUser.imageUri || null);
+      setBackgroundImage(updatedUser.backgroundImageUri || null);
     } catch (error) {
-      Alert.alert("Error", "Unable to log out. Please try again.");
+      console.error("Error updating user data:", error);
+      Alert.alert("Error", "Unable to update user data.");
     }
   };
 
-  // Fetch and Subscribe to User Data
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const authenticatedUser = await Auth.currentAuthenticatedUser();
-        const userId = authenticatedUser.attributes.sub;
-
-        const result = await API.graphql(
-          graphqlOperation(getUser, { id: userId })
-        );
-
-        const fetchedUser = result.data.getUser as User;
-        setUser(fetchedUser);
-        setProfileImage(fetchedUser.imageUri || null);
-        setBackgroundImage(fetchedUser.backgroundImageUri || null);
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        Alert.alert("Error", "Unable to fetch user data.");
-      }
-    };
-
-    fetchUser();
-
-    const subscription = API.graphql(
-      graphqlOperation(onUpdateUser)
-    ).subscribe({
-      next: ({ value }) => {
-        const updatedUser = value.data.onUpdateUser as User;
-        setUser(updatedUser);
-        setProfileImage(updatedUser.imageUri || null);
-        setBackgroundImage(updatedUser.backgroundImageUri || null);
-      },
-      error: (error) => {
-        console.error("Subscription error:", error);
-      },
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Update Image
   const pickImage = async (type: "profile" | "background") => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: type === "profile" ? [4, 3] : [16, 9],
-      quality: 0.5,
+      quality: 0.7,
     });
-
+  
     if (!result.canceled) {
-      const selectedImage = result.assets[0].uri;
+      const selectedImageUri = result.assets[0].uri;
       try {
         setIsLoading(true);
+        const response = await fetch(selectedImageUri);
+        const blob = await response.blob();
+  
+        const fileExtension = selectedImageUri.split(".").pop() || "jpg";
+        const key = `${type}-image-${Date.now()}.${fileExtension}`;
         const authenticatedUser = await Auth.currentAuthenticatedUser();
         const userId = authenticatedUser.attributes.sub;
-
-        const input =
-          type === "profile"
-            ? { id: userId, imageUri: selectedImage }
-            : { id: userId, backgroundImageUri: selectedImage };
-
-        await API.graphql(graphqlOperation(updateUser, { input }));
-        type === "profile"
-          ? setProfileImage(selectedImage)
-          : setBackgroundImage(selectedImage);
+  
+        // Get the old user data to preserve other fields
+        const { data } = await client.query({
+          query: GET_USER,
+          variables: { id: userId },
+          fetchPolicy: "network-only", // Ensure fresh data from the server
+        });
+  
+        const oldImageUrl = type === "profile" ? data?.getUser?.imageUri : data?.getUser?.backgroundImageUri;
+  
+        // Extract the key from the old image URL (if exists)
+        if (oldImageUrl) {
+          const keyToDelete = oldImageUrl.split("/").pop(); // Extracts "filename.jpg"
+          if (keyToDelete) {
+            await Storage.remove(keyToDelete, { level: "public" });
+            console.log(`Deleted old ${type} image: ${keyToDelete}`);
+          }
+        }
+  
+        // Upload the new image
+        const uploadResult = await Storage.put(key, blob, {
+          contentType: blob.type,
+          level: "public",
+        });
+  
+        const publicUrl = `https://${awsconfig.aws_user_files_s3_bucket}.s3.${awsconfig.aws_user_files_s3_bucket_region}.amazonaws.com/public/${uploadResult.key}`;
+  
+        // Ensure other values remain unchanged
+        const updatedUser = {
+          id: userId,
+          imageUri: type === "profile" ? publicUrl : data?.getUser?.imageUri, // Keep existing profile image
+          backgroundImageUri: type === "background" ? publicUrl : data?.getUser?.backgroundImageUri, // Keep existing background
+        };
+  
+        // Update the user data
+        await updateUserData(updatedUser);
+  
+        // Update only the selected image in the state
+        if (type === "profile") {
+          setProfileImage(publicUrl);
+        } else {
+          setBackgroundImage(publicUrl);
+        }
+  
       } catch (error) {
-        console.error("Error updating image:", error);
-        Alert.alert("Error", "Unable to update image.");
+        console.error("Error uploading image:", error);
+        Alert.alert("Error", "Unable to upload image.");
       } finally {
         setIsLoading(false);
       }
     }
   };
+  
 
-  // Update User Data from Params
-  useEffect(() => {
-    const params = router.params as Record<string, string | undefined>;
-    if (params?.updatedName || params?.updatedPhone || params?.updatedAbout) {
-      setUser((prevUser) => ({
-        ...prevUser!,
-        name: params.updatedName || prevUser?.name || "",
-        phonenumber: params.updatedPhone || prevUser?.phonenumber || "",
-        status: params.updatedAbout || prevUser?.status || "",
-      }));
+  const LogOut = async () => {
+    try {
+      const userData = await Auth.currentAuthenticatedUser();
+      const userId = userData.attributes.sub;
+  
+      await Auth.signOut();
+      // Remove specific user cache from Apollo
+      client.cache.evict({ fieldName: 'getUser' });
+      client.cache.gc(); // Garbage collect to remove unused cache
+      // Reset state
+      setProfileImage(null);
+      setBackgroundImage(null);
+    } catch (error) {
+      Alert.alert("Error", "Unable to log out. Please try again.");
     }
-  }, [router.params]);
+  };
 
-  
-  
+  // Loading state while fetching user data
+  if (loading) return <ActivityIndicator size="large" color={theme.textPrimary} />;
+  if (error) return <Text>Error: {error.message}</Text>;
+const defaultImage=require("../../assets/images/default.jpg");
+const defaultSource=require("../../assets/images/default-background.avif")
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Background Image Section */}
-      <View style={[styles.profileContainer, { backgroundColor: theme.card }]}>
-        <ImageBackground
-          source={{
-            uri:
-              backgroundImage ||
-              profileImage ||
-              "https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500",
-          }}
-          style={styles.imageBackground}
-          resizeMode="cover"
-        >
-          <TouchableOpacity
-            style={styles.cameraIconBackground}
-            onPress={() => pickImage("background")}
-          >
-            <Icon name="camera" size={20} color="white" />
-          </TouchableOpacity>
+      {/* Profile Section */}
+      <View style={styles.profileContainer}>
+      <Image source={backgroundImage||profileImage ? { uri: backgroundImage || profileImage} : defaultSource} style={styles.backgroundImage} />
 
-          <View style={styles.overlayContainer}>
-            <View>
-              <Image
-                source={{
-                  uri:
-                    profileImage ||
-                    "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg",
-                }}
-                style={styles.profileImage}
-              />
-              <TouchableOpacity
-                style={styles.cameraIconProfile}
-                onPress={() => pickImage("profile")}
-              >
-                <Icon name="camera" size={18} color="white" />
-              </TouchableOpacity>
-            </View>
+        <TouchableOpacity style={styles.cameraIconBackground} onPress={() => pickImage("background")}>
+        <Ionicons name="camera-outline" size={24} color="white" />
+        </TouchableOpacity>
 
-            <Text style={[styles.profileName, { color: theme.textPrimary }]}>
-              {user?.name || "User Name"}
-            </Text>
-            <Text style={[styles.profileNumber, { color: theme.textPrimary }]}>
-              {user?.phonenumber || "+1234567890"}
-            </Text>
-          </View>
-        </ImageBackground>
+        
+        
+        <Image source={profileImage ? { uri: profileImage } : defaultImage} style={styles.profileImage} />
 
-        {/* About Section */}
-        <View style={styles.aboutContainer}>
-          <TextInput
-            style={[styles.aboutInput, { color: theme.textPrimary }]}
-            placeholder="Add a brief description about yourself"
-            placeholderTextColor={theme.textSecondary}
-            value={user?.status || ""}
-            editable={false} // Not editable here; can edit on the next screen
-          />
-        </View>
+        
 
-        {/* Loading indicator */}
-        {isLoading && <ActivityIndicator size="large" color={theme.icon} />}
+        <TouchableOpacity style={[styles.cameraIconProfile]} onPress={() => pickImage("profile")}>
+        <Ionicons name="camera-outline" size={24} color="white" />
+        
+        </TouchableOpacity>
+        
 
-        {/* Edit Button */}
-        <Pressable
-          style={styles.editButton}
-          onPress={() =>
-            router.push({
-              pathname: '/EditProfile',
-              params: {
-                name: user?.name || '',
-                phone: user?.phonenumber || '',
-                about: user?.status || '',
-              },
-            })
-          }
-        >
-          <Text style={[styles.editButtonText,{color:theme.textPrimary}]}>Edit Profile</Text>
-        </Pressable>
-
+        <Text style={[styles.profileName, { color: theme.textPrimary }]}>{data?.getUser?.name || "User Name"}</Text>
+        <Text style={[styles.profileNumber, { color: theme.textPrimary }]}>{data?.getUser?.phonenumber || "+1234567890"}</Text>
       </View>
 
-      {/* Logout Button */}
+      {/* About Section */}
+      <View style={styles.aboutContainer}>
+        <TextInput
+          style={[styles.aboutInput, { color: theme.textPrimary }]}
+          placeholder="Add a brief description about yourself"
+          placeholderTextColor={theme.textPrimary}
+          multiline={true}
+          value={data?.getUser?.status || ""}
+          editable={false}
+        />
+      </View>
+
+      {/* Edit Profile Button */}
+      <TouchableOpacity style={styles.editButton} onPress={() => router.push({pathname:"/EditProfile",params:{
+        name:data?.getUser?.name,
+        phone:data?.getUser?.phonenumber,
+        about:data?.getUser?.status
+
+      }})}>
+        <Text style={[styles.editButtonText, { color: theme.textPrimary }]}>Edit Profile</Text>
+      </TouchableOpacity>
+
+      {/* Log Out Button */}
       <View style={styles.logoutContainer}>
-        <Pressable style={styles.logoutButton} onPress={LogOut}>
-          <Text style={[styles.logoutButtonText,{color:theme.textPrimary}]}>Log Out</Text>
-        </Pressable>
-      </View>
+      <TouchableOpacity style={styles.logoutButton} onPress={LogOut}>
+        <Text style={[styles.logoutButtonText, { color: theme.textPrimary }]}>Log Out</Text>
+      </TouchableOpacity></View>
+      <Modal
+        transparent={true}
+        animationType="fade"
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        <TouchableWithoutFeedback onPress={closeModal}>
+          <View style={styles.modalBackground}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <Image source={{ uri: modalImage }} style={styles.modalImage} />
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  profileContainer: { width: "100%", height: 300 },
-  imageBackground: { width: "100%", height: "100%", justifyContent: "flex-end" },
-  overlayContainer: { alignItems: "center", marginBottom: -100 },
-  profileImage: { height: 120, width: 120, borderRadius: 60, borderWidth: 2, borderColor: "white", marginBottom: 10 },
-  cameraIconProfile: { position: "absolute", bottom: 0, right: 10, backgroundColor: "#444", borderRadius: 15, padding: 5 },
-  cameraIconBackground: { position: "absolute", top: 10, right: 10, backgroundColor: "#444", borderRadius: 20, padding: 8 },
-  profileName: { fontSize: 22, fontWeight: "bold", textAlign: "center" },
-  profileNumber: { fontSize: 16, fontWeight: "bold", textAlign: "center", marginTop: 5 },
-  aboutContainer: { paddingHorizontal: 20, marginTop: 100 },
-  aboutInput: { fontSize: 16, borderBottomWidth: 1, borderBottomColor: "#ccc", paddingVertical: 10 },
-  editButton: {
-    marginTop: 20,
-    borderColor:"gray",
-    borderWidth:2,
-    padding: 10,
-    width:200,
-    alignItems: "center",
-    alignSelf:"center",
-    justifyContent:"center",
-    borderRadius: 5,
-  },
-  editButtonText: { color: "white", fontSize: 16, fontWeight: "bold" },
-  logoutContainer: { flex: 1, justifyContent: "flex-end", paddingHorizontal: 20, paddingBottom: 30 },
-  logoutButton: { borderWidth:2,borderColor:"gray", padding: 15, alignItems: "center", borderRadius: 5 },
-  logoutButtonText: { color: "white", fontSize: 16, fontWeight: "bold" },
-});

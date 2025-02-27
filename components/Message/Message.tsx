@@ -2,25 +2,25 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   useColorScheme,
   ActivityIndicator,
   useWindowDimensions,
   Animated,
   Pressable,
   Modal,
-  TouchableOpacity,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
-import { getMessage, getUser } from '../../src/graphql/queries';
+import { API, graphqlOperation, Storage } from 'aws-amplify';
 import { format } from 'date-fns';
 import { S3Image } from 'aws-amplify-react-native';
 import AudioPlayer from '../AudioPlayer/AudioPlayer';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as subscriptions from '../../src/graphql/subscriptions';
 import { PanGestureHandler } from 'react-native-gesture-handler';
-
+import {styles}from "./messagestyles";
+import { useRouter } from 'expo-router';
+import { useQuery} from '@apollo/client';
+import { GET_MESSAGE, GET_USER} from '@/src/graphql/operations';
 interface MessageProps {
   message: {
     id: string;
@@ -45,7 +45,7 @@ interface User {
   name: string;
 }
 
-const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply, authUserId, fetchUser }: MessageProps) => {
+const Message = ({ message,setAsMessageReply, authUserId, fetchUser }: MessageProps) => {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   const { width } = useWindowDimensions();
@@ -53,11 +53,9 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
   const [isHighlighted, setIsHighlighted] = useState(false);
   const [currentMessage, setCurrentMessage] = useState(message);
   const [user, setUser] = useState<User | null>(null);
-  const [isMe, setIsMe] = useState(false);
+  
   const [soundUri, setSoundUri] = useState<string | null>(null);
   const [replyTitle, setReplyTitle] = useState(null);
-  const [scheduleMessage,setScheduleMessage]=useState("Hello");
-  const [scheduleTime,setScheduleTime]=useState("12/1/2025 2:40PM");
   const senderName = replyTitle?.userID === authUserId ? "You" : fetchUser?.name;
   const [isImageFullScreen, setIsImageFullScreen] = useState(false);
   const translateX = new Animated.Value(0);
@@ -66,10 +64,10 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
   const [selectedImage, setSelectedImage] = useState<string | null>(null); // Currently selected image
 
 
-  const onImagePress = (imageKey: string) => {
-    setSelectedImage(imageKey);
-    setModalVisible(true);
-    setIsImageFullScreen(true);
+  const router = useRouter();
+
+  const onImagePress = (imgKey:string) => {
+    router.push({ pathname:'/ImageViewScreen', params: { imgKey } });
   };
 
   const closeModal = () => {
@@ -79,6 +77,7 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
   };
 
 
+  const isMe = message.userID === authUserId || message.status === "SENDING";
 
   // Detect swipe gestures
   const onGestureEvent = Animated.event(
@@ -114,87 +113,66 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
     }
   }, [message.audio]);
 
-  useEffect(() => {
-    if (message?.replyToMessageId) {
-      const fetchMessageReply = async () => {
-        try {
-          const fetchedMessageReply: any = await API.graphql(
-            graphqlOperation(getMessage, { id: message.replyToMessageId })
-          );
-          setRepliedMessage(fetchedMessageReply.data.getMessage || null);
-          setReplyTitle(fetchedMessageReply.data.getMessage || null);
-        } catch (error) {
-          console.error('Error fetching replied message:', error);
-        }
-      };
-      fetchMessageReply();
-    }
-  }, [message.replyToMessageId]);
+  
+  
+  const { data: userData } = useQuery(GET_USER, {
+    variables: { id: message.userID },
+    skip: !message.userID,
+  });
 
-  // Fetch user data
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const userData: any = await API.graphql({
-          query: getUser,
-          variables: { id: message.userID },
-        });
+  const { data: repliedMessageData } = useQuery(GET_MESSAGE, {
+    variables: { id: message.replyToMessageId },
+    skip: !message.replyToMessageId,
+  });
 
-        setUser(userData?.data?.getUser || null);
-      } catch (error) {
-        console.error(`Error fetching user with ID ${message.userID}:`, error);
-      }
-    };
-    fetchUser();
-  }, [message.userID]);
-
-  // Check if the message is from the current user
   useEffect(() => {
-    const checkIfMe = async () => {
-      try {
-        const authUser = await Auth.currentAuthenticatedUser();
-        setIsMe(user?.id === authUser.attributes.sub);
-      } catch (error) {
-        console.error('Error checking user identity:', error);
-      }
-    };
-    if (user) checkIfMe();
-  }, [user]);
-
-  // Subscribe to message updates
-  useEffect(() => {
-    const subscription = API.graphql({
-      query: subscriptions.onUpdateMessage,
-    }).subscribe({
+    const subscription = API.graphql(
+      graphqlOperation(subscriptions.onUpdateMessage)
+    ).subscribe({
       next: ({ value }) => {
         const updatedMessage = value.data.onUpdateMessage;
         if (updatedMessage.id === message.id) {
-          setCurrentMessage((prev) => ({
-            ...prev,
-            ...updatedMessage,
+          setCurrentMessage((prevMessage) => ({
+            ...prevMessage,
+            status: updatedMessage.status,
           }));
         }
       },
-      error: (error) => console.error('Subscription error:', error),
+      error: (error) => console.warn("Subscription error:", error),
     });
-
+  
     return () => subscription.unsubscribe();
   }, [message.id]);
+  
+  
 
+  useEffect(() => {
+    if (userData?.getUser) {
+      setUser(userData.getUser);
+    }
+    if (repliedMessageData?.getMessage) {
+      setRepliedMessage(repliedMessageData.getMessage);
+    }
+  }, [userData?.getUser, repliedMessageData]);
+
+
+  
+  
   if (!user) {
-    return <ActivityIndicator style={{ margin: 5 }} />;
+    return ;
   }
 
   const formattedDate = format(new Date(currentMessage.createdAt), 'p');
 
   const containerStyle = [
-    styles.container,
+    message.content?styles.container:styles.othercontainer,
+    
     isMe ? styles.rightContainer : styles.leftContainer,
     {
       backgroundColor: isMe
         ? isDarkMode
           ? '#3953a3'
-          : '#3777f0'
+          : "#007AFF"
         : isDarkMode
           ? '#333'
           : '#e0e0e0',
@@ -223,9 +201,7 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
       activeOffsetX={[-10, 10]} 
     >
       <Animated.View
-        style={
-          containerStyle
-        }
+        style={message.content ? containerStyle : containerStyle}
       >
 
 
@@ -278,7 +254,7 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
             {!message.content && (
               <>
                 <View style={{ flexDirection: "row", gap: 10 }}>
-                  <Text style={timestampStyle}>{formattedDate}</Text>
+                  <Text style={timestampStyle}>{formattedDate} </Text>
                   {isMe &&
                     currentMessage.status !== 'SENT' &&
                     currentMessage.status && (
@@ -289,25 +265,11 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
                             : 'checkmark-done'
                         }
                         size={16}
-                        color="white"
+                        color={currentMessage.status === 'READ'?"#a2f9fc":"white"}
                       />
                     )}
                 </View>
-                {
-                  isMe ? (
-                    <>
-                      <View style={[styles.rightArrowonly, { backgroundColor: isDarkMode ? '#3953a3' : '#3777f0' }]}>
 
-                      </View>
-                      <View style={[styles.rightArrowOverlaponly, { backgroundColor: isDarkMode ? '#121212' : '#fff', }]}></View></>
-                  ) : (
-                    <>
-                      <View style={[styles.leftArrowonly, { backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
-
-                      </View>
-                      <View style={[styles.leftArrowOverlaponly, { backgroundColor: isDarkMode ? '#121212' : '#fff', }]}></View></>
-                  )
-                }
 
               </>
             )}
@@ -329,25 +291,10 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
                           : 'checkmark-done'
                       }
                       size={16}
-                      color="white"
+                      color={currentMessage.status === 'READ'?"#a2f9fc":"white"}
                     />
                   )}
               </View>
-              {
-                isMe ? (
-                  <>
-                    <View style={[styles.rightArrow, { backgroundColor: isDarkMode ? '#3953a3' : '#3777f0' }]}>
-
-                    </View>
-                    <View style={[styles.rightArrowOverlap, { backgroundColor: isDarkMode ? '#121212' : '#fff', }]}></View></>
-                ) : (
-                  <>
-                    <View style={[styles.leftArrow, { backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
-
-                    </View>
-                    <View style={[styles.leftArrowOverlap, { backgroundColor: isDarkMode ? '#121212' : '#fff', }]}></View></>
-                )
-              }
             </>
             )}
           </>
@@ -358,8 +305,10 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
             <View style={styles.row}>
               <View style={styles.messageContent}>
                 <Text style={textStyle}>{message.content}</Text>
+                {message.status === "SENDING" && <ActivityIndicator size="large" />}
+                {message.status === "FAILED" && <Text style={{ color: "red" }}>Failed to send</Text>}
               </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flexDirection: 'row', gap: 10,marginRight:10 }}>
                 <Text style={timestampStyle}>{formattedDate}</Text>
                 {isMe &&
                   currentMessage.status !== 'SENT' &&
@@ -370,8 +319,8 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
                           ? 'checkmark'
                           : 'checkmark-done'
                       }
-                      size={16}
-                      color="white"
+                      size={20}
+                      color={currentMessage.status === 'READ'?"#a2f9fc":"white"}
                     />
                   )}
               </View>
@@ -417,168 +366,5 @@ const Message = ({ message, isFirst, isSameUser, setAsMessageReply, messageReply
   </Modal></>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 10,
-    marginVertical: 2,
-    marginHorizontal: 10,
-    borderRadius: 15,
-    maxWidth: '80%',
-    position: "relative"
-
-  },
-  rightArrow: {
-    position: "absolute",
-    width: 20,
-    height: 25,
-    bottom: 0,
-    borderBottomLeftRadius: 25,
-    right: -10
-  },
-
-  rightArrowOverlap: {
-    position: "absolute",
-    width: 20,
-    height: 35,
-    bottom: -6,
-    borderBottomLeftRadius: 18,
-    right: -20
-
-  },
-  leftArrow: {
-    position: "absolute",
-    backgroundColor: "#dedede",
-    width: 20,
-    height: 25,
-    bottom: 0,
-    borderBottomRightRadius: 25,
-    left: -10
-  },
-
-  leftArrowOverlap: {
-    position: "absolute",
-    backgroundColor: "#eeeeee",
-    width: 20,
-    height: 35,
-    bottom: -6,
-    borderBottomRightRadius: 18,
-    left: -20
-
-  },
-  rightArrowonly: {
-    position: "absolute",
-    width: 20,
-    height: 25,
-    bottom: -5,
-    borderBottomLeftRadius: 25,
-    right: -15
-  },
-
-  rightArrowOverlaponly: {
-    position: "absolute",
-    width: 20,
-    height: 35,
-    bottom: -10,
-    borderBottomLeftRadius: 18,
-    right: -30
-
-  },
-  leftArrowonly: {
-    position: "absolute",
-    backgroundColor: "#dedede",
-    width: 20,
-    height: 25,
-    bottom: -5,
-    borderBottomRightRadius: 25,
-    left: -15
-  },
-
-  leftArrowOverlaponly: {
-    position: "absolute",
-    backgroundColor: "#eeeeee",
-    width: 20,
-    height: 35,
-    bottom: -10,
-    borderBottomRightRadius: 18,
-    left: -30
-
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalClose: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    padding: 10,
-    backgroundColor: 'white',
-    borderRadius: 20,
-  },
-  
-  fullscreenImage: {
-    width: '100%',
-    height: '100%',
-  },
-
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  messageContent: {
-    maxWidth: '75%',
-  },
-  imageContainer: {
-    alignItems: 'flex-end',
-  },
-  leftContainer: {
-    alignSelf: 'flex-start',
-
-  },
-  rightContainer: {
-    alignSelf: 'flex-end',
-
-  },
-  replyWrapper: {
-    marginBottom: 2, // Add some space between the reply and the main message
-  },
-  replyContainer: {
-    backgroundColor: '#d4f8e8', // Light green background for the reply
-    padding: 8,
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#34b7f1', // Add a blue line on the left
-  },
-  replyUser: {
-    fontWeight: 'bold',
-    fontSize: 12,
-    color: '#075e54', // Dark green text for the username
-    marginBottom: 2,
-  },
-  replyContent: {
-    fontSize: 14,
-    color: '#000', // Black text for the content
-  },
-  replyImage: {
-    width: 150,
-    height: 100,
-    borderRadius: 8,
-    marginTop: 5,
-  },
-  replyAudioContainer: {
-    backgroundColor: '#d4f8e8', // Light green background to match the reply container
-    padding: 8,
-    borderRadius: 10,
-    marginTop: 5,
-    borderLeftWidth: 4,
-    borderLeftColor: '#34b7f1',
-    flexDirection: "row"// Blue line for reply differentiation
-  },
-});
 
 export default Message;
